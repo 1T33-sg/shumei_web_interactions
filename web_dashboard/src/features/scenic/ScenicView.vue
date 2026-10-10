@@ -19,7 +19,7 @@ function setHorizon(value: string) { horizon.value = Number(value) }
 </script>
 
 <template>
-  <div class="dashboard-page">
+  <div class="dashboard-page scenic-page">
   <section class="page-heading scenic-heading">
     <div><span class="eyebrow">SCENIC ANALYSIS / 景区</span><h1>景区客流观察</h1><p>查看接待人次的历史变化与经过回测的周／月预测。</p></div>
     <div class="toolbar">
@@ -74,6 +74,9 @@ function setHorizon(value: string) { horizon.value = Number(value) }
 </template>
 
 <style scoped>
+.scenic-page { flex: 0 0 auto; }
+.scenic-page > .scenic-dashboard { flex: none; min-height: 360px; }
+.scenic-page :deep(.chart-canvas) { min-height: 220px; }
 .scenic-heading .toolbar { max-width: 760px; justify-content: flex-end; }
 .scenic-entity-field { --select-min-width: 153px; }
 .period-field input { min-width: 140px; border-radius: 0; }

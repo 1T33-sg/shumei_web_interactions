@@ -51,6 +51,8 @@ test('scenic comparison is available and resets after filter changes',async({pag
  await page.getByRole('button',{name:'生成对比'}).click()
  await expect(page.locator('.comparison-grid article')).toHaveCount(2)
  await expect(page.locator('.comparison-note')).toContainText('不相加')
+ const history = await page.locator('.scenic-dashboard').boundingBox(), comparison = await page.locator('.comparison-panel').boundingBox()
+ expect(comparison!.y).toBeGreaterThanOrEqual(history!.y + history!.height)
  await page.getByRole('button',{name:'时间粒度',exact:true}).click();await page.getByRole('option',{name:'按周'}).click()
  await expect(page.locator('.comparison-grid')).toHaveCount(0)
 })
