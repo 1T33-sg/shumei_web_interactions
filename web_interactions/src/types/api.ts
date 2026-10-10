@@ -10,7 +10,7 @@ export interface Entity {
 export interface Point {
   metric: string; value: number | null; unit: string; period_start: string; period_end: string; grain: Grain
   source_ids: string[]; published_at: string; ingested_at: string; quality_status: string
-  is_forecast?: boolean; model_version?: string; lower?: number; upper?: number
+  is_forecast?: boolean; model_version?: string; lower_bound?: number | null; upper_bound?: number | null
 }
 export interface Series { entity: Entity; metric: Metric; grain: Grain; points: Point[]; missing_periods: string[]; coverage_ratio: number; transport_type: string }
 export interface Forecast {

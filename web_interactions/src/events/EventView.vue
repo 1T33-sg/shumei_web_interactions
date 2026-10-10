@@ -7,6 +7,8 @@ import Tag from 'primevue/tag'
 import Drawer from 'primevue/drawer'
 import StatePanel from '../components/StatePanel.vue'
 import { useInteractions } from '../module'
+import { useEntityNavigation } from '../entity-navigation'
+const { openEntity, navigationError, navigating } = useEntityNavigation()
 import { errorMessage, query, safeSourceUrl } from '../api/client'
 import type { EventItem } from '../types/api'
 import { dateText, effectiveEventStatus, severityLabels } from '../utils'
@@ -39,6 +41,7 @@ watch(() => route.query.id, openQueryDetail)
 </script>
 <template>
   <section class="b-ui page-stack">
+    <p v-if="navigationError" role="alert">{{ navigationError }}</p>
     <header class="page-heading"><div><div class="eyebrow">EVENTS & NOTICES</div><h1>事件中心<span class="heading-dot">.</span></h1><p>关注旅途中的变化，让信息有来源、有时效。</p></div><Button icon="pi pi-refresh" label="刷新事件" outlined severity="secondary" :loading="loading" @click="load()" /></header>
     <div class="panel filters">
       <label class="field grow">事件状态<Select v-model="status" :options="[{ label: '全部状态', value: '' }, { label: '当前有效', value: 'active' }, { label: '已解除', value: 'resolved' }]" option-label="label" option-value="value" aria-label="事件状态" @change="load(true)" /></label>
@@ -58,9 +61,9 @@ watch(() => route.query.id, openQueryDetail)
     </div>
     <div class="pagination"><span>第 {{ page }} 页 · 接口返回共 {{ total }} 条</span><Button label="上一页" icon="pi pi-angle-left" severity="secondary" text :disabled="page <= 1 || loading" @click="page--; load()" /><Button label="下一页" icon="pi pi-angle-right" icon-pos="right" severity="secondary" text :disabled="page * 20 >= total || loading" @click="page++; load()" /></div>
     <div class="panel definition-bar"><i class="pi pi-shield" /><div><strong>来源不同，意义也不同</strong><p>官方公告以发布机构与原始链接为准。模型提示仅供趋势分析，不代表官方预警。</p></div></div>
-    <Drawer v-model:visible="drawerOpen" header="事件详情" position="right" class="b-ui b-drawer">
+    <Drawer v-model:visible="drawerOpen" header="事件详情" position="right" class="b-ui b-drawer"><p v-if="navigationError" role="alert">{{ navigationError }}</p>
       <StatePanel v-if="detailLoading || detailError" :kind="detailLoading ? 'loading' : 'error'" :message="detailError" @retry="drawerOpen = false" />
-      <template v-else-if="selected"><Tag :value="selected.authority === 'official' ? '官方公告' : '模型提示 · 非官方预警'" :severity="selected.authority === 'official' ? 'success' : 'warn'" /><h2>{{ selected.title }}</h2><p class="detail-body">{{ selected.description }}</p><dl class="detail-list"><dt>状态</dt><dd>{{ statusLabels[effectiveEventStatus(selected)] }}</dd><dt>开始时间</dt><dd>{{ dateText(selected.starts_at, true) }}</dd><dt>结束时间</dt><dd>{{ dateText(selected.ends_at, true) }}</dd><dt>最近核验</dt><dd>{{ dateText(selected.last_verified_at, true) }}</dd><dt>影响对象</dt><dd v-for="id in selected.affected_entity_ids" :key="id"><RouterLink :to="{ name: 'b-transport', query: { entity_id: id } }" @click="drawerOpen = false">查看关联对象</RouterLink></dd></dl><h3>事件时间线</h3><ol class="timeline"><li v-for="(item, i) in selected.timeline" :key="i"><span>{{ dateText(item.at, true) }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></li></ol><a v-if="safeSourceUrl(selected.source_url)" :href="safeSourceUrl(selected.source_url)" target="_blank" rel="noopener noreferrer" class="text-link">查看公告原文 <i class="pi pi-arrow-up-right" /></a><p v-else class="muted small">{{ options.mode === 'demo' ? '演示事件没有真实公告链接。' : '来源链接尚未提供。' }}</p></template>
+      <template v-else-if="selected"><Tag :value="selected.authority === 'official' ? '官方公告' : '模型提示 · 非官方预警'" :severity="selected.authority === 'official' ? 'success' : 'warn'" /><h2>{{ selected.title }}</h2><p class="detail-body">{{ selected.description }}</p><dl class="detail-list"><dt>状态</dt><dd>{{ statusLabels[effectiveEventStatus(selected)] }}</dd><dt>开始时间</dt><dd>{{ dateText(selected.starts_at, true) }}</dd><dt>结束时间</dt><dd>{{ dateText(selected.ends_at, true) }}</dd><dt>最近核验</dt><dd>{{ dateText(selected.last_verified_at, true) }}</dd><dt>影响对象</dt><dd v-for="id in selected.affected_entity_ids" :key="id"><button class="text-link" :disabled="navigating" @click="openEntity(id).then(opened => { if (opened) drawerOpen = false })">查看关联对象</button></dd></dl><h3>事件时间线</h3><ol class="timeline"><li v-for="(item, i) in selected.timeline" :key="i"><span>{{ dateText(item.at, true) }}</span><strong>{{ item.label }}</strong><p>{{ item.description }}</p></li></ol><a v-if="safeSourceUrl(selected.source_url)" :href="safeSourceUrl(selected.source_url)" target="_blank" rel="noopener noreferrer" class="text-link">查看公告原文 <i class="pi pi-arrow-up-right" /></a><p v-else class="muted small">{{ options.mode === 'demo' ? '演示事件没有真实公告链接。' : '来源链接尚未提供。' }}</p></template>
     </Drawer>
   </section>
 </template>

@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { interactions, dataMode } from './runtime'
-import type { Entity, EventSummary, ForecastResult, Holiday, HolidayCompareResult, MetricDefinition, Overview, SeriesResult, Source, TrendGrain } from './types'
+import type { ComparisonResult, Entity, EventSummary, ForecastResult, Holiday, HolidayCompareResult, MetricDefinition, Overview, SeriesResult, Source, TrendGrain } from './types'
 export const interactionsAvailable = true
 export const backendMode = computed(() => dataMode === 'demo' ? 'demo' : interactions.auth.state.session ? 'live' : 'auth')
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -61,6 +61,6 @@ export async function getEvents(regionCode = '340000'): Promise<EventSummary[]> 
 }
 
 // D 的分析接口已预留，A 后续跨对象比较时可直接调用。
-export function compareSeries(body: { series: Array<{ entity_id: string; metric: string }>; grain: TrendGrain; start: string; end: string; display_mode: 'separate_axes' | 'index_100'; base_period?: string }): Promise<unknown> {
+export function compareSeries(body: { series: Array<{ entity_id: string; metric: string }>; grain: TrendGrain; start: string; end: string; display_mode: 'separate_axes' | 'index_100'; base_period?: string }): Promise<ComparisonResult> {
   return request('/analytics/compare', { method: 'POST', body: JSON.stringify(body) })
 }

@@ -6,9 +6,10 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import WeekPicker from '../../components/ui/WeekPicker.vue'
 import TrendChart from '../../components/charts/TrendChart.vue'
 import ForecastChart from '../../components/charts/ForecastChart.vue'
+import ScenicComparison from './ScenicComparison.vue'
 import { useScenic } from './scenic'
 
-const { entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload } = useScenic()
+const { startQuery, endQuery, entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload } = useScenic()
 const last = computed(() => series.value?.points.at(-1))
 const isDemo = computed(() => backendMode.value === 'demo')
 const entityOptions = computed(() => entities.value.map(entity => ({ value: entity.id, label: entity.name })))
@@ -66,6 +67,7 @@ function setHorizon(value: string) { horizon.value = Number(value) }
       <p class="source-footnote">{{ metric?.comparability_note ?? '不同来源与指标须先核对统计口径。' }}</p>
     </section>
     </div>
+    <ScenicComparison :entities="entities" :entity-id="entityId" :grain="grain" :start="startQuery" :end="endQuery" />
     <div v-if="loading" class="load-hint">正在更新数据…</div>
   </template>
   </div>

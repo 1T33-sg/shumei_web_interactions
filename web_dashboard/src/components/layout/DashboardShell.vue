@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { backendMode, interactionsAvailable } from '../../app/data'
 
-import { interactions } from '../../app/runtime'
+import { interactions, integrationConfigError } from '../../app/runtime'
 const route = useRoute()
 const logoutError = ref('')
 async function logout() { try { await interactions.auth.logout() } catch { logoutError.value = '退出失败，请重试' } }
@@ -51,7 +51,7 @@ const nav = [
           <span class="nav-index">{{ item.index }}</span><span>{{ item.label }}</span>
         </RouterLink>
       </nav>
-      <main class="main-content">
+      <main class="main-content"><p v-if="integrationConfigError" role="alert">{{integrationConfigError}}；可在录像页手动关联结果，修正配置后重启。</p>
         <slot />
       </main>
     </div>
