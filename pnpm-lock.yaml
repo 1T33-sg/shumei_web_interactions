@@ -4,9 +4,74 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  vue: ^3.5.43
+  vue-router: ^4.6.4
+  echarts: ^6.0.0
+  primevue: 4.5.5
+  '@primeuix/themes': 1.2.5
+
 importers:
 
   .:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.0
+        version: 1.64.0
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.1
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.11(@types/node@24.19.1)(vite@7.3.7(@types/node@24.19.1))
+
+  web_dashboard:
+    dependencies:
+      '@amap/amap-jsapi-loader':
+        specifier: ^1.0.1
+        version: 1.0.1
+      '@anhui/web-interactions':
+        specifier: workspace:*
+        version: link:../web_interactions
+      '@primeuix/themes':
+        specifier: 1.2.5
+        version: 1.2.5
+      echarts:
+        specifier: ^6.0.0
+        version: 6.1.0
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      primevue:
+        specifier: 4.5.5
+        version: 4.5.5(vue@3.5.43(typescript@5.9.3))
+      vue:
+        specifier: ^3.5.43
+        version: 3.5.43(typescript@5.9.3)
+      vue-router:
+        specifier: ^4.6.4
+        version: 4.6.4(vue@3.5.43(typescript@5.9.3))
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.1
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.9
+        version: 6.0.9(vite@7.3.7(@types/node@24.19.1))(vue@3.5.43(typescript@5.9.3))
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.0
+        version: 7.3.7(@types/node@24.19.1)
+      vue-tsc:
+        specifier: ^3.3.12
+        version: 3.3.12(typescript@5.9.3)
+
+  web_interactions:
     dependencies:
       '@primeuix/themes':
         specifier: 1.2.5
@@ -40,16 +105,19 @@ importers:
         specifier: ^4.0.0
         version: 4.1.11(@types/node@24.19.1)(vite@7.3.7(@types/node@24.19.1))
       vue:
-        specifier: ^3.5.0
+        specifier: ^3.5.43
         version: 3.5.43(typescript@5.9.3)
       vue-router:
-        specifier: ^4.5.0
+        specifier: ^4.6.4
         version: 4.6.4(vue@3.5.43(typescript@5.9.3))
       vue-tsc:
         specifier: ^3.0.0
         version: 3.3.12(typescript@5.9.3)
 
 packages:
+
+  '@amap/amap-jsapi-loader@1.0.1':
+    resolution: {integrity: sha512-nPyLKt7Ow/ThHLkSvn2etQlUzqxmTVgK7bIgwdBRTg2HK5668oN7xVxkaiRe3YZEzGzfV2XgH5Jmu2T73ljejw==}
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -257,7 +325,7 @@ packages:
     resolution: {integrity: sha512-JpkXhq1ddc70JdsC3CC4dM+UbeeWuCW/8DpS9dNBfrOk824TLSlRlMEGFyVKqRMn5WPQvYLiy3xXfLQeNdSqhQ==}
     engines: {node: '>=12.11.0'}
     peerDependencies:
-      vue: ^3.5.0
+      vue: ^3.5.43
 
   '@primevue/icons@4.5.5':
     resolution: {integrity: sha512-eteOhTdAOXEYE9qW1AOrBBgDxQ2szHJxSkEK1XVdV2TKxGM5FQf03Ovms0VDyZTc16XBIgvwYjXJQS0BPbhPaA==}
@@ -424,7 +492,7 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-      vue: ^3.2.25
+      vue: ^3.5.43
 
   '@vitest/expect@4.1.11':
     resolution: {integrity: sha512-VX2x5vNJXET47KAFzwERI+KRMtTTCSWTfSMKsW7JsUsXV4psq++e3DvZpuTDOpHcxytiDs6p2nhVb2tVDiiUYw==}
@@ -738,7 +806,7 @@ packages:
   vue-router@4.6.4:
     resolution: {integrity: sha512-Hz9q5sa33Yhduglwz6g9skT8OBPii+4bFn88w6J+J4MfEo4KRRpmiNG/hHHkdbRFlLBOqxN8y8gf2Fb0MTUgVg==}
     peerDependencies:
-      vue: ^3.5.0
+      vue: ^3.5.43
 
   vue-tsc@3.3.12:
     resolution: {integrity: sha512-kbpaz18O9jPVkXVHD1BEjpUXM6WhXSu+62L1sGGr6Wbzd8GbvkBQWjoj3KZ/C0aq2MZllce7UdtWzwCIYsBMGA==}
@@ -763,6 +831,8 @@ packages:
     resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
 
 snapshots:
+
+  '@amap/amap-jsapi-loader@1.0.1': {}
 
   '@babel/helper-string-parser@7.29.7': {}
 

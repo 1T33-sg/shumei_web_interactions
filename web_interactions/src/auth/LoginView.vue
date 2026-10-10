@@ -13,7 +13,7 @@ async function login(demo = false) {
   if (loading.value) return
   if (!demo && (username.value.trim().length < 3 || password.value.length < 8)) { error.value = '用户名至少 3 个字符，密码至少 8 个字符'; return }
   loading.value = true; error.value = ''
-  try { await auth.login(demo ? 'demo' : username.value.trim(), demo ? 'demo2026' : password.value); await router.replace(safeRedirect(route.query.redirect)) }
+  try { await auth.login(demo ? 'demo' : username.value.trim(), demo ? 'demo2026' : password.value); await router.replace(safeRedirect(route.query.redirect, options.allowedRedirects, options.defaultRedirect)) }
   catch (e) { error.value = errorMessage(e) }
   finally { password.value = ''; loading.value = false }
 }
