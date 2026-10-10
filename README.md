@@ -37,3 +37,5 @@ pnpm test:e2e
 - `tests/`：统一认证、数据契约和 Chrome 页面集成测试。
 
 采用 pnpm workspace，本地包引用不依赖仓库外目录。所有页面均显示演示标记；问答为预设响应，视频计数与本地预览文件无关。
+
+A/B 对象跳转、预测区间兼容、录像分析结果关联和跨景区比较的详细契约见 [INTEGRATION.md](./INTEGRATION.md)。

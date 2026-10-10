@@ -11,6 +11,8 @@ import { errorMessage, query } from '../api/client'
 import type { Counts, Forecast, Point, VideoItem } from '../types/api'
 import { dateText, numberText } from '../utils'
 const { client, options } = useInteractions()
+const selectedAnalysisIds = ref<Record<string, string>>({ ...options.analysisIds })
+const analysisInput = ref(''), analysisInputError = ref('')
 const videos = ref<VideoItem[]>([]), videoId = ref(''), counts = ref<Counts | null>(null), forecast = ref<Forecast | null>(null)
 const loading = ref(true), error = ref(''), forecastError = ref(''), predicting = ref(false)
 const position = ref(3600), direction = ref<'entries' | 'exits'>('entries'), horizon = ref(30)
@@ -33,16 +35,23 @@ async function loadVideos() {
 async function loadCounts() {
   const current = ++generation; ++forecastVersion; counts.value = null; forecast.value = null; forecastError.value = ''; predicting.value = false; error.value = ''; playbackError.value = ''; loading.value = true
   position.value = Math.min(3600, duration.value)
-  const analysisId = options.analysisIds?.[videoId.value]
+  analysisInput.value = selectedAnalysisIds.value[videoId.value] ?? ''; analysisInputError.value = ''
+  const analysisId = selectedAnalysisIds.value[videoId.value]
   if (!analysisId) { loading.value = false; return }
   try { const response = await client.get<Counts>(`/videos/${videoId.value}/counts?${query({ analysis_id: analysisId })}`); if (current === generation) counts.value = response.data }
   catch (e) { if (current === generation) error.value = errorMessage(e) }
   finally { if (current === generation) loading.value = false }
 }
+async function associateAnalysis() {
+  const id = analysisInput.value.trim()
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { analysisInputError.value = '请输入有效的分析结果编号（UUID）'; return }
+  selectedAnalysisIds.value[videoId.value] = id
+  await loadCounts()
+}
 function seek() { if (player.value && playbackSrc.value && Number.isFinite(player.value.duration)) player.value.currentTime = Math.min(position.value, player.value.duration) }
 function updateTime() { if (player.value) position.value = Math.min(player.value.currentTime, duration.value) }
 async function predict() {
-  const analysisId = options.analysisIds?.[videoId.value]
+  const analysisId = selectedAnalysisIds.value[videoId.value]
   if (!analysisId) return
   player.value?.pause()
   const current = ++forecastVersion; forecast.value = null; forecastError.value = ''; predicting.value = true
@@ -67,6 +76,12 @@ onBeforeUnmount(() => { if (localUrl.value) URL.revokeObjectURL(localUrl.value) 
   <section class="b-ui page-stack">
     <header class="page-heading"><div><div class="eyebrow">RECORDED VIDEO ANALYSIS</div><h1>录像回放<span class="heading-dot">.</span></h1><p>沿时间轴回看入口通行，理解短时客流变化。</p></div><Tag value="录像回放 · 非实时" severity="warn" /></header>
     <div class="panel filters"><label class="field grow">录像片段<Select v-model="videoId" :options="videos.map(v => ({ value: v.id, label: `${options.cameraNames?.[v.camera_id] || v.camera_id} · ${dateText(v.recorded_start_at)}` }))" option-label="label" option-value="value" aria-label="录像片段" @change="loadCounts" /></label><div class="recording-meta"><span>录制时间</span><strong>{{ dateText(video?.recorded_start_at, true) }} — {{ video?.recorded_end_at.slice(11,16) || '—' }}</strong></div></div>
+    <form v-if="options.mode === 'api' && video" class="panel filters" @submit.prevent="associateAnalysis">
+      <label class="field grow">分析结果编号<input v-model="analysisInput" aria-label="分析结果编号" placeholder="填写该录像已完成的分析结果编号" /></label>
+      <Button type="submit" label="关联分析结果" :disabled="loading" />
+      <p v-if="analysisInputError" role="alert">{{ analysisInputError }}</p>
+      <p class="muted small">由管理员提供对应录像的分析结果编号；服务器负责校验访问权限和录像归属。</p>
+    </form>
     <StatePanel v-if="loading || error" :kind="loading ? 'loading' : 'error'" :message="error" @retry="videos.length ? loadCounts() : loadVideos()" />
     <StatePanel v-else-if="!video" kind="empty" message="暂无获准回放的录像。待上传并授权后可查看。" />
     <template v-else>

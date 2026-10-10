@@ -151,3 +151,8 @@ export class ApiError extends Error {
     this.name = 'ApiError'
   }
 }
+
+export interface ComparisonResult {
+ series: Array<{ entity_id: string; metric: string; points: NumericPoint[]; missing_periods: Array<{ start: string; end: string }>; source_ids: string[] }>
+ comparison_note: string
+}

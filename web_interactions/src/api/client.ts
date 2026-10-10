@@ -1,3 +1,4 @@
+import { normalizeForecast } from './forecast'
 import type { Envelope } from '../types/api'
 
 export class ApiError extends Error {
@@ -23,6 +24,7 @@ export function createApiClient(options: { fetcher?: Fetcher; csrf: () => string
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new ApiError(response.status, payload?.error?.code ?? 'request_failed', payload?.error?.message ?? '请求失败，请稍后重试', payload?.request_id)
       if (!payload || !('data' in payload) || !payload.meta) throw new ApiError(502, 'invalid_response', '接口返回格式不符合约定')
+      if (path === '/forecasts/history' || path.endsWith('/short-forecast')) payload.data = normalizeForecast(payload.data)
       return payload as Envelope<T>
     } catch (error) {
       if (error instanceof ApiError) throw error

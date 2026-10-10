@@ -27,7 +27,7 @@ test('events, citations and video forecasts', async ({ page }) => {
  await enter(page,'/events')
  await page.getByRole('button',{name:/合肥南站发送量波动提示/}).click()
  await expect(page.getByText('事件时间线')).toBeVisible()
- await page.getByRole('link',{name:'查看关联对象'}).click()
+ await page.getByRole('button',{name:'查看关联对象'}).click()
  await expect(page).toHaveURL(/transport.*entity_id/)
  await page.getByRole('button',{name:'问问智能助手'}).click()
  await page.getByRole('button',{name:'发送',exact:true}).click()
@@ -46,7 +46,7 @@ test('invalid login and unsafe redirect', async ({page}) => {
  await page.getByRole('button',{name:'登录工作台'}).click()
  await expect(page.getByText(/演示账号为 demo/)).toBeVisible()
  await page.getByRole('button',{name:'进入演示工作台'}).click()
- await expect(page).toHaveURL('http://127.0.0.1:5173/')
+ await expect(page).toHaveURL('http://127.0.0.1:5183/')
 })
 
 test('scenic and holiday filters', async ({page}) => {

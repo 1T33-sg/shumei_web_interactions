@@ -108,8 +108,8 @@ const forecastPoints = computed<Point[]>(() => {
       quality_status: 'model_estimate',
       is_forecast: true,
       model_version: 'seasonal-demo-v1',
-      lower: last * (1 + index * 0.025),
-      upper: last * (1 + index * 0.085),
+      lower_bound: last * (1 + index * 0.025),
+      upper_bound: last * (1 + index * 0.085),
     })
   }
   return result

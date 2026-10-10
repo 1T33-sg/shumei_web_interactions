@@ -47,7 +47,7 @@ export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher
         const start = new Date(`${last.period_start}T00:00:00Z`); start.setUTCMonth(start.getUTCMonth() + i + 1)
         const end = new Date(start); end.setUTCMonth(end.getUTCMonth() + 1); end.setUTCDate(0)
         const value = Math.round(last.value! * (1.035 + i * .017))
-        return { ...last, period_start: start.toISOString().slice(0, 10), period_end: end.toISOString().slice(0, 10), value, lower: Math.round(value * .9), upper: Math.round(value * 1.1), is_forecast: true, model_version: 'demo-baseline' }
+        return { ...last, period_start: start.toISOString().slice(0, 10), period_end: end.toISOString().slice(0, 10), value, lower_bound: Math.round(value * .9), upper_bound: Math.round(value * 1.1), is_forecast: true, model_version: 'demo-baseline' }
       })
       return ok({ status: 'ready', forecast_points, model_version: 'demo-baseline', backtest: { method: '演示回测（模拟结果）', mae: 68500, smape: 4.8, sample_count: 6 }, training_window: { start: all[0]!.period_start, end: last.period_end }, source_ids: [sourceId] })
     }
@@ -71,7 +71,7 @@ export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher
       if (scenario === 'insufficient' || history.length < 6) return ok({ status: 'data_insufficient', forecast_points: [], reason: '截止位置之前至少需要 30 分钟有效计数', model_version: 'demo-short-v1' })
       if (history.slice(-6).some(p => p.quality_status === 'occluded')) return ok({ status: 'quality_insufficient', forecast_points: [], reason: '近期窗口存在遮挡，暂不提供预测', model_version: 'demo-short-v1' })
       const mean = history.slice(-6).reduce((sum, p) => sum + p[body.direction as 'entries' | 'exits'], 0) / 6
-      const forecast_points: Point[] = Array.from({ length: body.horizon_minutes / body.step_minutes }, (_, i) => ({ metric: body.direction === 'entries' ? 'camera_entries' : 'camera_exits', value: Math.round(mean * body.step_minutes / 5), lower: Math.round(mean * body.step_minutes / 5 * .75), upper: Math.round(mean * body.step_minutes / 5 * 1.25), unit: '人次', grain: 'day', period_start: chinaTime(Date.parse(body.cutoff_at) + i * body.step_minutes * 60000), period_end: chinaTime(Date.parse(body.cutoff_at) + (i + 1) * body.step_minutes * 60000), source_ids: [], published_at: body.cutoff_at, ingested_at: body.cutoff_at, quality_status: 'demo', is_forecast: true, model_version: 'demo-short-v1' }))
+      const forecast_points: Point[] = Array.from({ length: body.horizon_minutes / body.step_minutes }, (_, i) => ({ metric: body.direction === 'entries' ? 'camera_entries' : 'camera_exits', value: Math.round(mean * body.step_minutes / 5), lower_bound: Math.round(mean * body.step_minutes / 5 * .75), upper_bound: Math.round(mean * body.step_minutes / 5 * 1.25), unit: '人次', grain: 'day', period_start: chinaTime(Date.parse(body.cutoff_at) + i * body.step_minutes * 60000), period_end: chinaTime(Date.parse(body.cutoff_at) + (i + 1) * body.step_minutes * 60000), source_ids: [], published_at: body.cutoff_at, ingested_at: body.cutoff_at, quality_status: 'demo', is_forecast: true, model_version: 'demo-short-v1' }))
       return ok({ status: 'ready', forecast_points, training_cutoff: body.cutoff_at, model_version: 'demo-short-v1', validation_error: null })
     }
     return fail(404, 'not_available', '演示环境未提供此资源')

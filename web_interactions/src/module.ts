@@ -1,6 +1,6 @@
 import { inject, reactive, readonly, type App, type InjectionKey } from 'vue'
-import type { Router } from 'vue-router'
-import { ApiError, createApiClient, type Fetcher } from './api/client'
+import type { RouteLocationRaw, Router } from 'vue-router'
+import { ApiError, createApiClient, type Fetcher, type ApiClient } from './api/client'
 import type { Session } from './types/api'
 
 export interface InteractionOptions {
@@ -8,6 +8,7 @@ export interface InteractionOptions {
   defaultRedirect?: string
   allowedRedirects?: string[]
   transportLayout?: 'standard' | 'bigscreen'
+  resolveEntityRoute?: (entityId: string, client: ApiClient) => Promise<RouteLocationRaw | null>
   analysisIds?: Record<string, string>
   cameraNames?: Record<string, string>
   regions?: { label: string; value: string }[]
@@ -34,6 +35,11 @@ export function createInteractions(options: InteractionOptions = {}) {
     async logout() { await client.post('/auth/logout'); clear() },
   }
   return {
+    async resolveEntityRoute(entityId: string): Promise<RouteLocationRaw | null> {
+      if (options.resolveEntityRoute) return options.resolveEntityRoute(entityId, client)
+      const result = await client.get<import('./types/api').Entity[]>('/catalog/entities?page_size=100')
+      return result.data.some(e => e.id === entityId && e.type !== 'scenic') ? { name: 'b-transport', query: { entity_id: entityId } } : null
+    },
     client, auth, options: { ...options, mode: options.mode ?? 'api' },
     install(app: App) { app.provide(interactionsKey, this) },
     installGuard(router: Router) {

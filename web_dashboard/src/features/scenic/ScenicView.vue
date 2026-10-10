@@ -6,9 +6,10 @@ import UiSelect from '../../components/ui/UiSelect.vue'
 import WeekPicker from '../../components/ui/WeekPicker.vue'
 import TrendChart from '../../components/charts/TrendChart.vue'
 import ForecastChart from '../../components/charts/ForecastChart.vue'
+import ScenicComparison from './ScenicComparison.vue'
 import { useScenic } from './scenic'
 
-const { entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload } = useScenic()
+const { startQuery, endQuery, entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload } = useScenic()
 const last = computed(() => series.value?.points.at(-1))
 const isDemo = computed(() => backendMode.value === 'demo')
 const entityOptions = computed(() => entities.value.map(entity => ({ value: entity.id, label: entity.name })))
@@ -18,7 +19,7 @@ function setHorizon(value: string) { horizon.value = Number(value) }
 </script>
 
 <template>
-  <div class="dashboard-page">
+  <div class="dashboard-page scenic-page">
   <section class="page-heading scenic-heading">
     <div><span class="eyebrow">SCENIC ANALYSIS / 景区</span><h1>景区客流观察</h1><p>查看接待人次的历史变化与经过回测的周／月预测。</p></div>
     <div class="toolbar">
@@ -66,12 +67,16 @@ function setHorizon(value: string) { horizon.value = Number(value) }
       <p class="source-footnote">{{ metric?.comparability_note ?? '不同来源与指标须先核对统计口径。' }}</p>
     </section>
     </div>
+    <ScenicComparison :entities="entities" :entity-id="entityId" :grain="grain" :start="startQuery" :end="endQuery" />
     <div v-if="loading" class="load-hint">正在更新数据…</div>
   </template>
   </div>
 </template>
 
 <style scoped>
+.scenic-page { flex: 0 0 auto; }
+.scenic-page > .scenic-dashboard { flex: none; min-height: 360px; }
+.scenic-page :deep(.chart-canvas) { min-height: 220px; }
 .scenic-heading .toolbar { max-width: 760px; justify-content: flex-end; }
 .scenic-entity-field { --select-min-width: 153px; }
 .period-field input { min-width: 140px; border-radius: 0; }
