@@ -2,7 +2,8 @@ import type { Fetcher } from '../src/api/client'
 import type { Point } from '../src/types/api'
 import { analysisId, chinaTime, counts, entities, events, seriesPoints, sourceId, videos } from './fixtures'
 
-export function createDemoApi(scenario = 'normal'): Fetcher {
+export type DemoHandler = (url: URL, init?: RequestInit) => Response | undefined
+export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher {
   let signedIn = false
   const ok = (data: unknown, meta = {}) => new Response(JSON.stringify({ data, meta: { request_id: 'demo-request', ...meta } }), { status: 200 })
   const fail = (status: number, code: string, message: string) => new Response(JSON.stringify({ error: { code, message, details: {} }, request_id: 'demo-request' }), { status })
@@ -21,6 +22,11 @@ export function createDemoApi(scenario = 'normal'): Fetcher {
     if (path === '/auth/me') return ok(session())
     if (path === '/auth/logout') { signedIn = false; return ok({ logged_out: true }) }
     if (scenario === 'error') return fail(503, 'demo_unavailable', '演示故障场景：服务暂时不可用')
+    if (scenario === 'network') throw new Error('模拟网络断开')
+    if (scenario === 'expired') return fail(401, 'expired', '会话已失效')
+    if (scenario === 'invalid') return fail(422, 'invalid_query', '查询参数无效')
+    const extended = extra?.(url, init)
+    if (extended) return extended
     if (path === '/catalog/entities') return ok(entities, { total: entities.length, page: 1, page_size: 100 })
     if (path.startsWith('/sources/')) return ok({ id: sourceId, publisher: '本地演示数据集', title: '交通客流界面演示数据', url: '', published_at: '2026-10-08T09:00:00+08:00', retrieved_at: '2026-10-08T10:00:00+08:00', coverage_start: '2026-01-01', coverage_end: '2026-09-30', native_grain: 'month', usage_note: '所有数值均为人工构造，仅用于界面和交互验证，不能用于研究结论或出行决策。', verification_status: 'demo' })
     if (/^\/transport\/[^/]+\/series$/.test(path)) {
@@ -46,7 +52,7 @@ export function createDemoApi(scenario = 'normal'): Fetcher {
       return ok({ status: 'ready', forecast_points, model_version: 'demo-baseline', backtest: { method: '演示回测（模拟结果）', mae: 68500, smape: 4.8, sample_count: 6 }, training_window: { start: all[0]!.period_start, end: last.period_end }, source_ids: [sourceId] })
     }
     if (path === '/events') {
-      const filtered = scenario === 'empty' ? [] : events.filter(event => ['region_code', 'status', 'authority'].every(key => !url.searchParams.get(key) || event[key as 'status'] === url.searchParams.get(key)))
+      const filtered = scenario === 'empty' ? [] : events.filter(event => ['region_code', 'status', 'authority'].every(key => !url.searchParams.get(key) || (key === 'region_code' && url.searchParams.get(key) === '340000') || event[key as 'status'] === url.searchParams.get(key)))
       const page = Number(url.searchParams.get('page') || 1), size = Number(url.searchParams.get('page_size') || 20)
       return ok(filtered.slice((page - 1) * size, page * size), { total: filtered.length, page, page_size: size })
     }

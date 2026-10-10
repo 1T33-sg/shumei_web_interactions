@@ -65,7 +65,7 @@ watch(() => route.query.entity_id, value => { if (typeof value === 'string' && e
 onMounted(loadCatalog)
 </script>
 <template>
-  <BigscreenTransportView
+  <BigscreenTransportView v-if="options.transportLayout !== 'standard'"
     v-model:entity-id="entityId"
     v-model:grain="grain"
     v-model:horizon="horizon"
@@ -81,7 +81,7 @@ onMounted(loadCatalog)
     @query="loadSeries"
     @predict="predict"
   />
-  <section class="b-ui page-stack">
+  <section v-else class="b-ui page-stack">
     <header class="page-heading"><div><div class="eyebrow">MOBILITY OBSERVATORY</div><h1>交通客流<span class="heading-dot">.</span></h1><p>循着数据，观察安徽的每一段旅程。</p></div><Button label="问问智能助手" icon="pi pi-sparkles" severity="secondary" outlined :disabled="!entity" @click="ask" /></header>
     <form class="panel filters" @submit.prevent="loadSeries">
       <div class="field grow"><label for="entity">交通枢纽</label><Select input-id="entity" v-model="entityId" :options="entities" option-label="name" option-value="id" placeholder="选择交通枢纽" @change="loadSeries" /></div>

@@ -5,6 +5,9 @@ import type { Session } from './types/api'
 
 export interface InteractionOptions {
   mode?: 'api' | 'demo'; fetcher?: Fetcher
+  defaultRedirect?: string
+  allowedRedirects?: string[]
+  transportLayout?: 'standard' | 'bigscreen'
   analysisIds?: Record<string, string>
   cameraNames?: Record<string, string>
   regions?: { label: string; value: string }[]
@@ -52,6 +55,8 @@ export function useInteractions() {
   if (!module) throw new Error('请先 app.use(createInteractions(...))')
   return module
 }
-export function safeRedirect(value: unknown) {
-  return typeof value === 'string' && /^\/(transport|events|assistant|video)(?:[/?#]|$)/.test(value) ? value : '/transport'
+export function safeRedirect(value: unknown, allowed = ['/transport', '/events', '/assistant', '/video'], fallback = '/transport') {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\\s]/.test(value)) return fallback
+  const path = value.split(/[?#]/)[0]!
+  return allowed.includes(path) && path !== '/login' ? value : fallback
 }

@@ -36,6 +36,3 @@
 .b-ui .journey-node b{color:#d3e7f5}
 .b-ui .login-story-footer{color:#718eaa}
 .b-ui .login-copyright{color:#637f9b}
-.bigscreen-replacement ~ * {
-  display: none !important;
-}

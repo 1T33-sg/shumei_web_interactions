@@ -1,0 +1,41 @@
+{
+  "name": "@anhui/web-interactions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./demo": "./dev/mock.ts",
+    "./fixtures": "./dev/fixtures.ts"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "pnpm -w test",
+    "test:e2e": "pnpm -w test:e2e",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "dependencies": {
+    "@primeuix/themes": "1.2.5",
+    "echarts": "^6.0.0",
+    "primeicons": "^7.0.0",
+    "primevue": "4.5.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^3.0.0"
+  }
+}
