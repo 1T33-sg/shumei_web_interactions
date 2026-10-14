@@ -34,5 +34,25 @@ export interface Answer {
 }
 export interface KnowledgeDocument { title: string; publisher: string; source_url: string; published_at: string; valid_from?: string; valid_until?: string; snippets?: string[]; permission_note: string }
 export interface VideoItem { id: string; scenic_id: string; camera_id: string; recorded_start_at: string; recorded_end_at: string; status: string; permission_record_id: string }
-export interface CountPoint { window_start: string; window_end: string; entries: number; exits: number; quality_status: string; detector_model_version: string; openvino_version: string; device: string }
-export interface Counts { points: CountPoint[]; manual_validation: { sample_count: number; mae: number } | null }
+export type CountGrain = 'frame' | '5min'
+export interface CountPoint {
+  metric: 'camera_visible_people'; value: number | null; unit: '人'; period_start: string; period_end: string; grain: CountGrain
+  source_ids: string[]; published_at: string; ingested_at: string; quality_status: string
+  sample_count?: number; aggregation_rule?: 'median'
+}
+export interface Counts {
+  metric: 'camera_visible_people'; roi: [number, number][]; points: CountPoint[]
+  count_model: 'dm_count'; weights_version: string; inference_engine: 'pytorch' | 'openvino'; device: string
+  openvino_version?: string; sample_interval_seconds?: number; aggregation_minutes?: number
+  manual_validation: { sample_count: number; mae: number } | null
+}
+export interface CameraForecastPoint {
+  metric: 'camera_visible_people'; value: number | null; unit: '人'; period_start: string; period_end: string; grain: '5min'
+  source_ids: string[]; published_at: string; ingested_at: string; quality_status: string
+  is_forecast: true; model_version: string; lower_bound?: number | null; upper_bound?: number | null
+}
+export interface CameraForecast {
+  metric: 'camera_visible_people'; status: 'ready' | 'data_insufficient' | 'quality_insufficient'; forecast_points: CameraForecastPoint[]; reason?: string
+  training_cutoff: string; input_window_minutes: number; model_version: string
+  validation_error: Partial<Record<15 | 30 | 60, { mae: number; baseline_mae: number; sample_count: number; method: string }>> | null
+}
