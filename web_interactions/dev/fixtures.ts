@@ -1,4 +1,4 @@
-import type { Entity, EventItem, Point, VideoItem, CountPoint } from '../src/types/api'
+import type { Entity, EventItem, Point, VideoItem, CountPoint, Counts } from '../src/types/api'
 export const entities: Entity[] = [
   { id: '10000000-0000-4000-8000-000000000001', name: '合肥南站', type: 'rail_station', region_code: '340100', available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
   { id: '10000000-0000-4000-8000-000000000002', name: '黄山北站', type: 'rail_station', region_code: '341000', available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
@@ -18,10 +18,49 @@ export const events: (EventItem & { region_code: string })[] = [
   { id: '30000000-0000-4000-8000-000000000002', title: '合肥南站发送量波动提示', kind: 'rail_adjustment', status: 'active', authority: 'model_signal', severity: 'warning', region_code: '340100', affected_entity_ids: [entities[0]!.id], starts_at: '2026-10-09T09:00:00+08:00', ends_at: '2026-10-15T23:59:00+08:00', published_at: '2026-10-09T09:00:00+08:00', last_verified_at: '2026-10-09T09:00:00+08:00', source_id: sourceId, description: '模拟规则发现月度发送量变化，仅用于展示模型提示。模型提示不是官方预警，也不能用于判断车站实时拥挤程度。', timeline: [{ at: '2026-10-09T09:00:00+08:00', label: '模型提示生成', description: '演示规则 demo-signal-v1' }] },
   { id: '30000000-0000-4000-8000-000000000003', title: '合肥新桥机场航班调整通知', kind: 'flight_adjustment', status: 'resolved', authority: 'official', severity: 'info', region_code: '340100', affected_entity_ids: [entities[2]!.id], starts_at: '2026-09-28T08:00:00+08:00', ends_at: '2026-09-28T18:00:00+08:00', published_at: '2026-09-27T16:00:00+08:00', last_verified_at: '2026-09-28T18:00:00+08:00', source_id: sourceId, description: '模拟航班调整公告，已解除。保留时间线用于说明历史公告与当前有效状态的区别。', timeline: [{ at: '2026-09-27T16:00:00+08:00', label: '公告发布', description: '模拟时刻调整' }, { at: '2026-09-28T18:00:00+08:00', label: '影响解除', description: '演示调整已结束' }] },
 ]
-export const videos: VideoItem[] = [{ id: '40000000-0000-4000-8000-000000000001', scenic_id: '00000000-0000-4000-8000-000000000001', camera_id: 'demo-east-gate', recorded_start_at: '2026-09-28T09:00:00+08:00', recorded_end_at: '2026-09-28T12:00:00+08:00', status: 'ready', permission_record_id: 'demo-no-video-file' }]
+export const videos: VideoItem[] = [
+  { id: '40000000-0000-4000-8000-000000000001', scenic_id: '00000000-0000-4000-8000-000000000001', camera_id: 'demo-east-gate', recorded_start_at: '2026-09-28T09:00:00+08:00', recorded_end_at: '2026-09-28T12:00:00+08:00', status: 'ready', permission_record_id: 'demo-no-video-file' },
+  { id: '40000000-0000-4000-8000-000000000002', scenic_id: '00000000-0000-4000-8000-000000000001', camera_id: 'demo-sparse-area', recorded_start_at: '2026-09-28T09:00:00+08:00', recorded_end_at: '2026-09-28T12:00:00+08:00', status: 'ready', permission_record_id: 'demo-no-video-file' },
+]
 export const analysisId = '60000000-0000-4000-8000-000000000001'
+export const demoAnalysisIds: Record<string, string> = {
+  [videos[0]!.id]: analysisId,
+  [videos[1]!.id]: '60000000-0000-4000-8000-000000000002',
+}
+export const demoCameraNames: Record<string, string> = {
+  'demo-east-gate': '黄山 · 密集画面模拟样本',
+  'demo-sparse-area': '黄山 · 稀疏画面模拟样本',
+}
 export function chinaTime(time: number) { return new Date(time + 8 * 3600000).toISOString().slice(0, 19) + '+08:00' }
-export const counts: CountPoint[] = Array.from({ length: 36 }, (_, i) => ({
-  window_start: chinaTime(Date.parse(videos[0]!.recorded_start_at) + i * 300000), window_end: chinaTime(Date.parse(videos[0]!.recorded_start_at) + (i + 1) * 300000),
-  entries: Math.round(18 + 12 * Math.sin(i / 6) + i / 3), exits: Math.round(9 + 4 * Math.cos(i / 4) + i / 4), quality_status: i === 21 ? 'occluded' : 'demo', detector_model_version: 'demo-detector', openvino_version: '演示占位', device: '未执行推理',
-}))
+function cameraPoints(video: VideoItem, sparse: boolean) {
+  const start = Date.parse(video.recorded_start_at)
+  const frames: CountPoint[] = Array.from({ length: 1080 }, (_, frame) => {
+    const window = Math.floor(frame / 30), sample = frame % 30
+    const quality_status = window === 1 ? 'missing' : window === 21 ? 'occluded' : 'demo'
+    const estimate = sparse ? Math.max(0, Math.round(3 + 2 * Math.sin(window / 6) + sample % 3 - 1)) : Math.round(75 + 25 * Math.sin(window / 6) + window / 2 + sample % 5 - 2)
+    const at = chinaTime(start + frame * 10000)
+    return {
+      metric: 'camera_visible_people', value: quality_status === 'demo' ? window === 0 ? 0 : estimate : null, unit: '人',
+      period_start: at, period_end: at, grain: 'frame', source_ids: [`demo-camera-${video.camera_id}`],
+      published_at: video.recorded_end_at, ingested_at: video.recorded_end_at, quality_status,
+    }
+  })
+  const points: CountPoint[] = Array.from({ length: 36 }, (_, window) => {
+    const samples = frames.slice(window * 30, (window + 1) * 30)
+    const values = samples.map(p => p.value).filter((value): value is number => value !== null).sort((a, b) => a - b)
+    const middle = Math.floor(values.length / 2)
+    const value = values.length ? values.length % 2 ? values[middle]! : (values[middle - 1]! + values[middle]!) / 2 : null
+    return {
+      ...samples[0]!, period_start: chinaTime(start + window * 300000), period_end: chinaTime(start + (window + 1) * 300000),
+      grain: '5min', value, sample_count: values.length, aggregation_rule: 'median',
+    }
+  })
+  const analysis: Counts = {
+    metric: 'camera_visible_people', roi: [[.12, .18], [.88, .18], [.88, .9], [.12, .9]], points,
+    count_model: 'dm_count', weights_version: 'demo-dm-count-simulated', inference_engine: 'pytorch', device: '模拟数据 · 未执行推理',
+    sample_interval_seconds: 10, aggregation_minutes: 5, manual_validation: { sample_count: 12, mae: sparse ? .8 : 3.6 },
+  }
+  return { analysis, frames }
+}
+export const demoCameraAnalyses = Object.fromEntries(videos.map((video, index) => [demoAnalysisIds[video.id]!, cameraPoints(video, index === 1)])) as Record<string, { analysis: Counts; frames: CountPoint[] }>
+export const counts = demoCameraAnalyses[analysisId]!.analysis.points

@@ -41,10 +41,14 @@ test('API video associates known analysis, handles 409 then predicts',async({pag
  await page.getByRole('button',{name:'关联分析结果'}).click();await expect(page.getByText('请输入有效的分析结果编号（UUID）',{exact:true})).toBeVisible()
  await page.getByLabel('分析结果编号',{exact:true}).fill(analysisId)
  await page.getByRole('button',{name:'关联分析结果'}).click();await expect(page.getByText('分析结果尚未就绪',{exact:true})).toBeVisible()
+ await expect(page.getByRole('combobox',{name:'录像片段'})).toBeVisible()
+ await expect(page.getByLabel('分析结果编号',{exact:true})).toHaveValue(analysisId)
  state.unavailable=false
- await page.getByRole('button',{name:'关联分析结果'}).click()
+ await page.getByRole('button',{name:'重新加载',exact:true}).click()
+ await expect(page.getByRole('combobox',{name:'计数粒度'})).toBeVisible()
  await page.getByRole('button',{name:'短时预测',exact:true}).click()
- await expect(page.getByText(/demo-short-v1/)).toBeVisible()
+ await expect(page.locator('.chart-footer')).toContainText('demo-damped-trend-simulated-v1')
+ await expect(page.locator('.video-trend-panel tbody tr').filter({has:page.getByRole('cell',{name:'预测',exact:true,includeHidden:true})})).toHaveCount(6)
 })
 test('scenic comparison is available and resets after filter changes',async({page})=>{
  await page.goto('/scenic');await page.getByRole('button',{name:'进入演示工作台'}).click()

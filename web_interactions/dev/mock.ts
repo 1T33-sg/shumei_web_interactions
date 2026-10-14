@@ -1,8 +1,16 @@
 import type { Fetcher } from '../src/api/client'
-import type { Point } from '../src/types/api'
-import { analysisId, chinaTime, counts, entities, events, seriesPoints, sourceId, videos } from './fixtures'
+import type { CameraForecast, CameraForecastPoint, CountPoint } from '../src/types/api'
+import { chinaTime, demoAnalysisIds, demoCameraAnalyses, entities, events, seriesPoints, sourceId, videos } from './fixtures'
 
 export type DemoHandler = (url: URL, init?: RequestInit) => Response | undefined
+function isoTime(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null
+  const time = Date.parse(value)
+  return Number.isFinite(time) ? time : null
+}
+function validCameraPoint(point: CountPoint): boolean {
+  return point.value !== null && Number.isFinite(point.value) && point.value >= 0 && ['demo', 'verified'].includes(point.quality_status)
+}
 export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher {
   let signedIn = false
   const ok = (data: unknown, meta = {}) => new Response(JSON.stringify({ data, meta: { request_id: 'demo-request', ...meta } }), { status: 200 })
@@ -64,15 +72,60 @@ export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher
         citations: hasEvidence ? [{ type: 'metric', id: sourceId, title: '合肥南站 · 月度发送量（演示）', entity_id: entities[0]!.id, date: '2026-09-30' }] : [], used_metric_queries: hasEvidence ? [{ entity_id: entities[0]!.id, metric: 'rail_departures', period_start: '2026-01-01', period_end: '2026-09-30', grain: 'month' }] : [], limitations: ['本地预设回答，仅用于交互演示', '演示数据不能作为实际出行依据'],
       })
     }
-    if (path === '/videos') return ok(scenario === 'empty' ? [] : videos, { total: scenario === 'empty' ? 0 : videos.length, page: 1, page_size: 100 })
-    if (path.endsWith('/counts')) return url.searchParams.get('analysis_id') !== analysisId ? fail(409, 'analysis_not_ready', '分析结果尚未就绪') : ok({ points: counts, manual_validation: null })
-    if (path.endsWith('/short-forecast')) {
-      const history = counts.filter(p => Date.parse(p.window_end) <= Date.parse(body.cutoff_at))
-      if (scenario === 'insufficient' || history.length < 6) return ok({ status: 'data_insufficient', forecast_points: [], reason: '截止位置之前至少需要 30 分钟有效计数', model_version: 'demo-short-v1' })
-      if (history.slice(-6).some(p => p.quality_status === 'occluded')) return ok({ status: 'quality_insufficient', forecast_points: [], reason: '近期窗口存在遮挡，暂不提供预测', model_version: 'demo-short-v1' })
-      const mean = history.slice(-6).reduce((sum, p) => sum + p[body.direction as 'entries' | 'exits'], 0) / 6
-      const forecast_points: Point[] = Array.from({ length: body.horizon_minutes / body.step_minutes }, (_, i) => ({ metric: body.direction === 'entries' ? 'camera_entries' : 'camera_exits', value: Math.round(mean * body.step_minutes / 5), lower_bound: Math.round(mean * body.step_minutes / 5 * .75), upper_bound: Math.round(mean * body.step_minutes / 5 * 1.25), unit: '人次', grain: 'day', period_start: chinaTime(Date.parse(body.cutoff_at) + i * body.step_minutes * 60000), period_end: chinaTime(Date.parse(body.cutoff_at) + (i + 1) * body.step_minutes * 60000), source_ids: [], published_at: body.cutoff_at, ingested_at: body.cutoff_at, quality_status: 'demo', is_forecast: true, model_version: 'demo-short-v1' }))
-      return ok({ status: 'ready', forecast_points, training_cutoff: body.cutoff_at, model_version: 'demo-short-v1', validation_error: null })
+    if (path === '/videos') {
+      const filtered = scenario === 'empty' ? [] : videos.filter(video => ['scenic_id', 'camera_id', 'status'].every(key => !url.searchParams.get(key) || video[key as 'scenic_id'] === url.searchParams.get(key)))
+      return ok(filtered, { total: filtered.length, page: 1, page_size: 100 })
+    }
+    if (/^\/videos\/[^/]+\/(?:counts|short-forecast)$/.test(path)) {
+      const video = videos.find(item => item.id === path.split('/')[2])
+      if (!video) return fail(404, 'not_found', '录像不存在')
+      const requestedAnalysis = path.endsWith('/counts') ? url.searchParams.get('analysis_id') : body.analysis_id
+      if (typeof requestedAnalysis !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestedAnalysis)) return fail(400, 'invalid_analysis_id', '请提供有效的分析结果编号')
+      if (requestedAnalysis !== demoAnalysisIds[video.id]) return fail(409, 'analysis_not_ready', '该录像的分析结果尚未就绪')
+      const dataset = demoCameraAnalyses[requestedAnalysis]!
+      if (path.endsWith('/counts')) {
+        const grain = url.searchParams.get('grain') ?? '5min'
+        if (grain !== 'frame' && grain !== '5min') return fail(422, 'unsupported_grain', '录像画面人数仅支持 frame 或 5min 粒度')
+        const start = url.searchParams.has('start') ? isoTime(url.searchParams.get('start')) : Number.NEGATIVE_INFINITY
+        const end = url.searchParams.has('end') ? isoTime(url.searchParams.get('end')) : Number.POSITIVE_INFINITY
+        if (start === null || end === null || start > end) return fail(400, 'invalid_time_range', '请提供有效的录制时间范围，且开始时间不能晚于结束时间')
+        const points = scenario === 'empty' ? [] : (grain === 'frame' ? dataset.frames : dataset.analysis.points).filter(point => Date.parse(point.period_start) >= start && Date.parse(point.period_end) <= end)
+        return ok({ ...dataset.analysis, points })
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'direction')) return fail(422, 'unsupported_direction', '画面人数预测不接受进入或离开方向参数')
+      if (![15, 30, 60].includes(body.horizon_minutes)) return fail(422, 'unsupported_horizon', '预测跨度只能为 15、30 或 60 分钟')
+      if (body.step_minutes !== 5) return fail(422, 'unsupported_step', '首版画面人数预测固定每 5 分钟一步')
+      const cutoff = isoTime(body.cutoff_at)
+      if (cutoff === null || cutoff < Date.parse(video.recorded_start_at) || cutoff > Date.parse(video.recorded_end_at)) return fail(400, 'invalid_cutoff', '预测截止时间必须是录制片段内的 ISO 时间')
+      const inputMinutes = body.horizon_minutes === 15 ? 60 : body.horizon_minutes === 30 ? 120 : 0
+      const base: CameraForecast = {
+        metric: 'camera_visible_people', status: 'data_insufficient', forecast_points: [], training_cutoff: body.cutoff_at,
+        input_window_minutes: inputMinutes, model_version: 'demo-damped-trend-simulated-v1', validation_error: null,
+      }
+      if (body.horizon_minutes === 60) return ok({ ...base, reason: '模拟样本仅有 3 小时单日记录，缺少同摄像头多天数据及 60 分钟时间顺序回测，暂不开放该跨度' })
+      const history = scenario === 'empty' ? [] : dataset.analysis.points.filter(point => Date.parse(point.period_end) <= cutoff)
+      if (scenario === 'insufficient' || history.length === 0) return ok({ ...base, reason: `模拟场景：截止位置前需要约 ${inputMinutes} 分钟有效画面人数，当前历史不足` })
+      if (history.slice(-2).some(point => !validCameraPoint(point))) return ok({ ...base, status: 'quality_insufficient', reason: '模拟质量门槛：最近两个窗口存在缺失或遮挡，暂停预测；缺失值未补零' })
+      if (cutoff - Date.parse(video.recorded_start_at) < inputMinutes * 60000) return ok({ ...base, reason: `模拟起步门槛：未来 ${body.horizon_minutes} 分钟预测需要截止位置前约 ${inputMinutes} 分钟历史` })
+      const window = history.filter(point => Date.parse(point.period_start) >= cutoff - inputMinutes * 60000)
+      const valid = window.filter(validCameraPoint)
+      // The demo permits a small historical gap while requiring recent complete windows; no missing value is imputed.
+      if (valid.length / (inputMinutes / 5) < .9) return ok({ ...base, status: 'quality_insufficient', reason: '模拟质量门槛：输入窗口有效计数覆盖率不足 90%，暂停预测；缺失和遮挡数据未参与拟合' })
+      const recent = valid.slice(-6), last = recent.at(-1)!
+      const trend = (last.value! - recent[0]!.value!) / Math.max(1, recent.length - 1)
+      const forecast_points: CameraForecastPoint[] = Array.from({ length: body.horizon_minutes / 5 }, (_, i) => {
+        const at = chinaTime(cutoff + (i + 1) * 300000)
+        const value = Math.max(0, Math.round(last.value! + trend * (1 - Math.pow(.8, i + 1)) / .2))
+        return {
+          metric: 'camera_visible_people', value, unit: '人', grain: '5min', period_start: at, period_end: at,
+          source_ids: last.source_ids, published_at: body.cutoff_at, ingested_at: body.cutoff_at, quality_status: 'demo',
+          is_forecast: true, model_version: base.model_version, lower_bound: Math.max(0, Math.round(value * .85)), upper_bound: Math.round(value * 1.15),
+        }
+      })
+      return ok({ ...base, status: 'ready', forecast_points, validation_error: { [body.horizon_minutes]: {
+        mae: body.horizon_minutes === 15 ? 4.2 : 6.4, baseline_mae: body.horizon_minutes === 15 ? 5.1 : 7.8,
+        sample_count: body.horizon_minutes === 15 ? 18 : 12, method: '模拟时间顺序回测结果；未执行真实模型训练或准确率验证',
+      } } })
     }
     return fail(404, 'not_available', '演示环境未提供此资源')
   }
