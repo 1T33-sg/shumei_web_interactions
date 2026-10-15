@@ -17,9 +17,11 @@ for (const size of [{width:1920,height:1080},{width:1366,height:768},{width:390,
  for(let i=0;i<7;i++) {await links.nth(i).click();await page.waitForTimeout(600);expect(await page.locator('body').evaluate(el=>el.scrollWidth<=innerWidth+2)).toBe(true)}
  await page.screenshot({path:`test-results/layout-${size.width}.png`,fullPage:true});expect(errors).toEqual([])
 })
-test('map missing configuration and transport interaction', async ({ page }) => {
- await enter(page);await expect(page.getByText('请先在 .env.local 配置高德 Key 和安全密钥。')).toBeVisible()
- await page.getByRole('link',{name:/交通客流/}).click();await expect(page.getByRole('button',{name:'生成预测'})).toBeVisible()
+test('3D map needs no key and opens transport details', async ({ page }) => {
+ await enter(page);await expect(page.locator('.three-map-canvas canvas')).toBeVisible()
+ await page.getByRole('button',{name:/合肥南站，铁路站/}).click()
+ await expect(page).toHaveURL(/transport\?entity_id=10000000/)
+ await expect(page.getByRole('button',{name:'生成预测'})).toBeVisible()
  await page.getByRole('button',{name:'问问智能助手'}).click();await expect(page).toHaveURL(/assistant/)
 })
 

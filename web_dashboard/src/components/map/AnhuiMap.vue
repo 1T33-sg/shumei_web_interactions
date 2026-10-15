@@ -1,411 +1,72 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import AMapLoader from '@amap/amap-jsapi-loader'
-import { formatValue } from '../../app/format'
-import type { Entity } from '../../app/types'
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { createAnhuiMap } from './three-map'
+import { loadMapBoundaries } from './map-data'
+import type { MapEntity, MapOptions, MapController } from './map-types'
+import './map.css'
 
-type MapEntity = Entity & {
-  latest_value?: number | null
-  latest_metric?: string
-}
-
-const props = defineProps<{ entities: MapEntity[] }>()
+const props = withDefaults(defineProps<{
+  entities: MapEntity[]
+  scenicId?: string
+  railId?: string
+  airportId?: string
+  demo?: boolean
+}>(), { demo: false })
 const emit = defineEmits<{ select: [entity: MapEntity] }>()
-
-const mapElement = ref<HTMLElement | null>(null)
+const mapHost = ref<HTMLElement | null>(null)
+const loading = ref(true)
 const loadError = ref('')
-const hasProvince = ref(false)
-let AMap: any = null
-let map: any = null
-let markers: any[] = []
-let provincePolygons: any[] = []
-let provinceView: { zoom: number; center: any } | null = null
-let resizeObserver: ResizeObserver | null = null
-let resizeFrame = 0
+let controller: MapController | null = null
 let disposed = false
+let attempt = 0
 
-function drawMarkers() {
-  if (!AMap || !map) return
-
-  if (markers.length) map.remove(markers)
-
-  markers = props.entities
-    .filter(entity =>
-      entity.longitude != null &&
-      entity.latitude != null &&
-      Number.isFinite(entity.longitude) &&
-      Number.isFinite(entity.latitude),
-    )
-    .map(entity => {
-      // 用 DOM 节点和 textContent，避免把地点名称拼进 HTML 字符串。
-      const content = document.createElement('div')
-      content.className = `entity-pin ${entity.type}`
-      content.tabIndex = 0
-      content.setAttribute('role', 'button')
-
-      const dot = document.createElement('span')
-      dot.className = 'pin-dot'
-      dot.setAttribute('aria-hidden', 'true')
-
-      const valueText = entity.latest_value == null
-        ? '暂无数值'
-        : `${formatValue(entity.latest_value)} 人次`
-      content.setAttribute('aria-label', `${entity.name}，${valueText}`)
-
-      const tooltip = document.createElement('span')
-      tooltip.className = 'pin-tooltip'
-      tooltip.setAttribute('aria-hidden', 'true')
-
-      const name = document.createElement('strong')
-      name.textContent = entity.name
-      const value = document.createElement('span')
-      value.textContent = valueText
-      tooltip.append(name, value)
-      content.append(dot, tooltip)
-
-      const marker = new AMap.Marker({
-        position: [entity.longitude!, entity.latitude!],
-        anchor: 'center',
-        content,
-      })
-
-      marker.on('click', () => emit('select', entity))
-      content.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return
-        event.preventDefault()
-        event.stopPropagation()
-        emit('select', entity)
-      })
-      return marker
-    })
-
-  if (markers.length) map.add(markers)
-}
-
-function showWholeProvince() {
-  if (!map || !provinceView) return
-  map.setZoomAndCenter(provinceView.zoom, provinceView.center, true)
-  syncDragState()
-}
-
-function syncDragState() {
-  if (!map || !provinceView) return
-  map.setStatus({ dragEnable: map.getZoom() > provinceView.zoom + 0.001 })
-}
-
-function fitAndLockProvince() {
-  if (!map || !provincePolygons.length) return
-
-  // 先按当前容器尺寸完整展示安徽，再把这幅画面固定为最小视图。
-  provinceView = null
-  map.clearLimitBounds()
-  map.setZooms([2, 20])
-  map.setFitView(provincePolygons, true, [36, 36, 36, 36])
-
-  provinceView = { zoom: map.getZoom(), center: map.getCenter() }
-  map.setZooms([provinceView.zoom, 20])
-  // 当前 JS API 返回的 Bounds 可直接用作限制拖动的四个边界。
-  map.setLimitBounds(map.getBounds())
-  syncDragState()
-}
-
-onMounted(async () => {
-  const key = import.meta.env.VITE_AMAP_KEY
-  const securityCode = import.meta.env.VITE_AMAP_SECURITY_CODE
-
-  if (!key || !securityCode) {
-    loadError.value = '请先在 .env.local 配置高德 Key 和安全密钥。'
-    return
+function mapOptions(): MapOptions {
+  return {
+    entities: props.entities, scenicId: props.scenicId, railId: props.railId,
+    airportId: props.airportId, demo: props.demo,
+    onSelect: entity => emit('select', entity),
   }
-  if (!mapElement.value) return
+}
 
+async function initialize() {
+  const request = ++attempt
+  loading.value = true
+  loadError.value = ''
   try {
-    // 必须在加载 JS API 之前设置。
-    ;(window as Window & {
-      _AMapSecurityConfig?: { securityJsCode: string }
-    })._AMapSecurityConfig = { securityJsCode: securityCode }
-
-    AMap = await AMapLoader.load({
-      key,
-      version: '2.0',
-      plugins: ['AMap.DistrictSearch', 'AMap.DistrictLayer'],
-    })
-    if (disposed || !mapElement.value) return
-
-    map = new AMap.Map(mapElement.value, {
-      // 地图掩模仅在 3D 视图生效；俯视角保持二维的视觉效果。
-      viewMode: '3D',
-      pitch: 0,
-      pitchEnable: false,
-      rotateEnable: false,
-      mapStyle: 'amap://styles/darkblue',
-      center: [117.3, 31.8],
-      zoom: 7,
-      showLabel: false,
-      dragEnable: false,
-      zoomEnable: true,
-      scrollWheel: true,
-      resizeEnable: true,
-    })
-
-    map.on('zoomchange', syncDragState)
-    resizeObserver = new ResizeObserver(() => {
-      if (!provinceView || disposed) return
-      cancelAnimationFrame(resizeFrame)
-      resizeFrame = requestAnimationFrame(fitAndLockProvince)
-    })
-    resizeObserver.observe(mapElement.value)
-
-    // 省外只显示省级轮廓；此图层不受安徽底图掩模影响。
-    const provinceBorders = new AMap.DistrictLayer.Country({
-      SOC: 'CHN',
-      depth: 2,
-      zIndex: 1,
-      rejectMapMask: true,
-    })
-    provinceBorders.setStyles({
-      'fill': '',
-      'nation-stroke': '',
-      'province-stroke': 'rgba(112, 163, 205, 0.42)',
-      'city-stroke': '',
-    })
-    map.add(provinceBorders)
-
-    drawMarkers()
-
-    const district = new AMap.DistrictSearch({
-      level: 'province',
-      subdistrict: 0,
-      extensions: 'all',
-    })
-
-    district.search('安徽省', (status: string, result: any) => {
-      if (disposed || !map) return
-      const boundaries = status === 'complete'
-        ? result.districtList?.[0]?.boundaries ?? []
-        : []
-
-      if (!boundaries.length) {
-        loadError.value = '安徽省边界加载失败，请检查 Key、密钥和网络。'
-        return
-      }
-
-      // 高德示例的掩模格式为 [ [行政区边界路径], ... ]。
-      map.setMask(boundaries.map((path: any) => [path]))
-
-      provincePolygons = boundaries.map((path: any) =>
-        new AMap.Polygon({
-          path,
-          strokeColor: '#00d4ff',
-          strokeWeight: 2,
-          fillColor: '#103a69',
-          fillOpacity: 0.18,
-        }),
-      )
-
-      map.add(provincePolygons)
-      hasProvince.value = true
-      fitAndLockProvince()
-    })
-  } catch {
-    loadError.value = '高德地图加载失败，请检查 Key、密钥和网络。'
+    const data = await loadMapBoundaries(import.meta.env.BASE_URL)
+    if (disposed || request !== attempt || !mapHost.value) return
+    controller?.dispose()
+    controller = null
+    controller = createAnhuiMap(mapHost.value, mapOptions(), data)
+  } catch (cause) {
+    if (disposed || request !== attempt) return
+    mapHost.value?.replaceChildren()
+    loadError.value = cause instanceof Error ? cause.message : '暂时无法创建 3D 地图。'
+  } finally {
+    if (!disposed && request === attempt) loading.value = false
   }
-})
+}
 
-watch(() => props.entities, drawMarkers, { deep: true })
-
-onUnmounted(() => {
+onMounted(() => { void initialize() })
+watch(() => [props.entities, props.scenicId, props.railId, props.airportId, props.demo], () => {
+  controller?.setData(mapOptions())
+}, { deep: true })
+onBeforeUnmount(() => {
   disposed = true
-  resizeObserver?.disconnect()
-  cancelAnimationFrame(resizeFrame)
-  map?.destroy()
-  map = null
+  attempt++
+  controller?.dispose()
+  controller = null
 })
 </script>
 
 <template>
-  <div class="map-stage">
-    <div ref="mapElement" class="map-canvas" />
-
-    <div class="map-legend">
-      <span><i class="legend-dot scenic" />景区</span>
-      <span><i class="legend-dot rail_station" />铁路站</span>
-      <span><i class="legend-dot airport" />机场</span>
-    </div>
-
-    <button
-      v-if="hasProvince"
-      class="reset-button"
-      type="button"
-      @click="showWholeProvince"
-    >
-      返回全省
-    </button>
-
-    <div v-if="loadError" class="map-error" role="status">
-      {{ loadError }}
+  <div class="map-stage three-map-stage" aria-label="安徽省三维行政区地图" :aria-busy="loading">
+    <div ref="mapHost" class="three-map-host" />
+    <div v-if="loading" class="three-map-status" role="status">正在加载安徽省立体地图…</div>
+    <div v-else-if="loadError" class="three-map-status error" role="alert">
+      <strong>地图加载失败</strong>
+      <span>{{ loadError }}</span>
+      <button type="button" @click="initialize">重新加载地图</button>
     </div>
   </div>
 </template>
-
-<style scoped>
-.map-stage {
-  position: relative;
-  flex: 1;
-  min-height: 390px;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid rgba(105, 158, 210, .13);
-  background: #091d3b;
-}
-
-.map-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  /* 高德会给地图容器注入网格背景；掩模外保持纯深蓝。 */
-  background-color: #091d3b !important;
-  background-image: none !important;
-}
-
-/* 高德署名是一张图片：文字转白，再覆盖还原左侧的原始彩色图标。 */
-.map-canvas :deep(.amap-logo img) {
-  filter: brightness(0) invert(1);
-}
-.map-canvas :deep(.amap-logo::after) {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 21px;
-  height: 20px;
-  background: url('https://webapi.amap.com/theme/v2.0/logo@2x.png') left top / 73px 20px no-repeat;
-  pointer-events: none;
-}
-
-.map-legend {
-  position: absolute;
-  z-index: 2;
-  top: 12px;
-  left: 12px;
-  display: flex;
-  gap: 12px;
-  padding: 7px 10px;
-  background: rgba(6, 20, 42, .82);
-  color: #c9e4f6;
-  font-size: 12px;
-  pointer-events: none;
-}
-
-.map-legend span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.legend-dot {
-  width: 7px;
-  height: 7px;
-  background: #00d4ff;
-}
-.legend-dot.rail_station { background: #00f2a9; }
-.legend-dot.airport { background: #ffb84d; }
-
-.reset-button {
-  position: absolute;
-  z-index: 2;
-  top: 12px;
-  right: 12px;
-  padding: 6px 10px;
-  border: 1px solid #417da5;
-  background: rgba(6, 20, 42, .86);
-  color: #e6f7ff;
-  cursor: pointer;
-}
-
-.map-error {
-  position: absolute;
-  z-index: 2;
-  top: 49px;
-  left: 12px;
-  max-width: calc(100% - 24px);
-  padding: 8px 10px;
-  background: rgba(88, 31, 31, .92);
-  color: white;
-  font-size: 12px;
-}
-
-:deep(.entity-pin) {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-}
-
-:deep(.entity-pin:focus-visible) {
-  outline: 1px solid #e6f7ff;
-  outline-offset: 2px;
-}
-
-:deep(.pin-dot) {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #00d4ff;
-  box-shadow: 0 0 8px #00d4ff;
-}
-:deep(.entity-pin.rail_station .pin-dot) {
-  background: #00f2a9;
-  box-shadow: 0 0 8px #00f2a9;
-}
-:deep(.entity-pin.airport .pin-dot) {
-  background: #ffb84d;
-  box-shadow: 0 0 8px #ffb84d;
-}
-
-:deep(.pin-tooltip) {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 9px;
-  border: 1px solid rgba(0, 212, 255, .5);
-  background: rgba(6, 20, 42, .96);
-  color: #e6f7ff;
-  font-size: 12px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(-50%);
-  transition: opacity .12s ease, visibility .12s ease;
-}
-
-:deep(.pin-tooltip > span) {
-  color: #9fc5df;
-}
-
-:deep(.entity-pin:hover .pin-tooltip),
-:deep(.entity-pin:focus-visible .pin-tooltip) {
-  opacity: 1;
-  visibility: visible;
-}
-
-.map-canvas :deep(.amap-marker:hover),
-.map-canvas :deep(.amap-marker:focus-within) {
-  z-index: 1000 !important;
-}
-
-@media (max-width: 640px) {
-  .map-stage { min-height: 330px; }
-  .map-legend { gap: 7px; font-size: 11px; }
-}
-</style>
