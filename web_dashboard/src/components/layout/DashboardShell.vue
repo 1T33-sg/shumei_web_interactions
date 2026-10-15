@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { backendMode, interactionsAvailable } from '../../app/data'
+import { backendMode, interactionsAvailable, refreshBackendStatus } from '../../app/data'
 
-import { interactions, integrationConfigError } from '../../app/runtime'
 const route = useRoute()
-const logoutError = ref('')
-async function logout() { try { await interactions.auth.logout() } catch { logoutError.value = '退出失败，请重试' } }
 const now = ref(new Date())
 let timer: number | undefined
 onMounted(() => { timer = window.setInterval(() => { now.value = new Date() }, 1000) })
@@ -20,7 +17,7 @@ const clock = computed(() => {
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
   return `${part('year')}年${Number(part('month'))}月${Number(part('day'))}日 ${part('hour')}:${part('minute')}:${part('second')}`
 })
-const modeLabel = computed(() => ({ checking: '正在连接', demo: '演示数据', live: '真实接口', auth: '需要登录' })[backendMode.value])
+const modeLabel = computed(() => ({ checking: '正在连接', demo: '', live: '真实接口', auth: '需要登录' })[backendMode.value])
 const nav = [
   { to: '/', label: '全域总览', index: '01' },
   { to: '/scenic', label: '景区客流', index: '02' },
@@ -41,9 +38,9 @@ const nav = [
         <div class="brand"><div class="brand-mark">皖</div><span>安徽文旅交通</span></div>
         <div class="topbar-title"><span>安徽文旅交通客流观察与预测</span><small>ANHUI TOURISM & TRANSPORT DASHBOARD</small></div>
         <div class="topbar-right">
-          <span :class="['connection', backendMode]"><span class="connection-dot" />{{ modeLabel }}</span>
+          <span v-if="backendMode !== 'demo'" :class="['connection', backendMode]"><span class="connection-dot" />{{ modeLabel }}</span>
           <time class="clock">{{ clock }}</time>
-          <button class="button-subtle" @click="logout">退出登录</button><span role="alert">{{ logoutError }}</span>
+          <button class="icon-button" title="重新检查接口" aria-label="重新检查接口" @click="refreshBackendStatus(true)">↻</button>
         </div>
       </header>
       <nav class="nav-list" aria-label="主导航">
@@ -51,7 +48,7 @@ const nav = [
           <span class="nav-index">{{ item.index }}</span><span>{{ item.label }}</span>
         </RouterLink>
       </nav>
-      <main class="main-content"><p v-if="integrationConfigError" role="alert">{{integrationConfigError}}；可在录像页手动关联结果，修正配置后重启。</p>
+      <main class="main-content">
         <slot />
       </main>
     </div>

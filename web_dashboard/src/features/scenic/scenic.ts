@@ -87,5 +87,5 @@ export function useScenic() {
 
   watch(() => route.query.id, (id) => { if (typeof id === 'string') entityId.value = id })
   watch([entityId, grain, start, end, today, horizon, backendMode], reload, { immediate: true })
-  return { startQuery, endQuery, entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload }
+  return { entityId, grain, setGrain, startPeriod, endPeriod, maxPeriod, refreshToday, horizon, entities, selectedEntity, metric, source, series, forecast, loading, error, reload }
 }

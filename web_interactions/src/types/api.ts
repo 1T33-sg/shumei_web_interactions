@@ -6,6 +6,11 @@ export interface Envelope<T> { data: T; meta: { request_id: string; page?: numbe
 export interface Entity {
   id: string; name: string; type: 'rail_station' | 'airport' | 'scenic'; region_code: string
   available_metrics: string[]; available_grains: Grain[]; status: string
+  longitude?: number | null; latitude?: number | null
+}
+export interface ComparisonResult {
+  series: Array<{ entity_id: string; metric: string; points: Point[]; missing_periods: Array<{ start: string; end: string }>; source_ids: string[] }>
+  comparison_note: string
 }
 export interface Point {
   metric: string; value: number | null; unit: string; period_start: string; period_end: string; grain: Grain

@@ -1,4 +1,4 @@
-import { inject, reactive, readonly, type App, type InjectionKey } from 'vue'
+import { inject, reactive, readonly, type App, type Component, type InjectionKey } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
 import { ApiError, createApiClient, type Fetcher, type ApiClient } from './api/client'
 import type { Session } from './types/api'
@@ -8,22 +8,23 @@ export interface InteractionOptions {
   defaultRedirect?: string
   allowedRedirects?: string[]
   transportLayout?: 'standard' | 'bigscreen'
+  transportMap?: Component
   resolveEntityRoute?: (entityId: string, client: ApiClient) => Promise<RouteLocationRaw | null>
   analysisIds?: Record<string, string>
   cameraNames?: Record<string, string>
   regions?: { label: string; value: string }[]
 }
 export function createInteractions(options: InteractionOptions = {}) {
-  const state = reactive<{ session: Session | null; checked: boolean }>({ session: null, checked: false })
+  const state = reactive<{ session: Session | null; checked: boolean; expired: boolean }>({ session: null, checked: false, expired: false })
   const listeners = new Set<() => void>()
   let checking: Promise<boolean> | undefined
-  const clear = () => { state.session = null; state.checked = true; listeners.forEach(fn => fn()) }
-  const client = createApiClient({ fetcher: options.fetcher, csrf: () => state.session?.csrf_token ?? null, unauthorized: clear })
+  const clear = (expired = false) => { state.session = null; state.checked = true; state.expired = expired; listeners.forEach(fn => fn()) }
+  const client = createApiClient({ fetcher: options.fetcher, csrf: () => state.session?.csrf_token ?? null, unauthorized: () => clear(!!state.session || state.expired) })
   async function checkSession() {
     if (state.checked) return !!state.session
     if (checking) return checking
     checking = (async () => {
-      try { state.session = (await client.get<Session>('/auth/me')).data; state.checked = true; return true }
+      try { state.session = (await client.get<Session>('/auth/me')).data; state.checked = true; state.expired = false; return true }
       catch (error) { if (error instanceof ApiError && error.status === 401) return false; throw error }
       finally { checking = undefined }
     })()
@@ -31,7 +32,7 @@ export function createInteractions(options: InteractionOptions = {}) {
   }
   const auth = {
     state: readonly(state), checkSession,
-    async login(username: string, password: string) { state.session = (await client.post<Session>('/auth/login', { username, password })).data; state.checked = true },
+    async login(username: string, password: string) { state.session = (await client.post<Session>('/auth/login', { username, password })).data; state.checked = true; state.expired = false },
     async logout() { await client.post('/auth/logout'); clear() },
   }
   return {
@@ -44,7 +45,7 @@ export function createInteractions(options: InteractionOptions = {}) {
     install(app: App) { app.provide(interactionsKey, this) },
     installGuard(router: Router) {
       listeners.add(() => {
-        if (router.currentRoute.value.meta.requiresAuth) void router.replace({ name: 'b-login', query: { redirect: router.currentRoute.value.fullPath, expired: '1' } })
+        if (router.currentRoute.value.meta.requiresAuth) void router.replace({ name: 'b-login', query: { redirect: router.currentRoute.value.fullPath, ...(state.expired ? { expired: '1' } : {}) } })
       })
       return router.beforeEach(async to => {
         if (!to.meta.requiresAuth) return true

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { createDemoApi } from '../../web_interactions/dev/mock'
-import { dashboardDemo } from '../../web_dashboard/src/app/demo-api'
+import { dashboardDemo } from '../../web_interactions/src/host/demo-api'
 
 async function enterMap(page: Page) {
   await page.goto('/')
@@ -21,7 +21,7 @@ test('full local boundaries, view controls and label switches', async ({ page })
   await expect(map.locator('.three-map-detail')).toHaveText('16 个地级市 · 104 个区县')
   await expect(map.locator('.three-admin-label.city')).toHaveCount(16)
   await expect(map.locator('.three-admin-label.county')).toHaveCount(104)
-  await expect(map.locator('.three-map-marker')).toHaveCount(4)
+  await expect(map.locator('.three-map-marker')).toHaveCount(11)
   await expect(map.locator('.three-map-marker.selected')).toHaveCount(3)
   await expect(page.getByText('动态连线仅示意地点关联，非实际出行轨迹')).toBeVisible()
 
@@ -51,6 +51,7 @@ test('full local boundaries, view controls and label switches', async ({ page })
 })
 
 test('rotation, wheel zoom and right-button panning change the map view', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1366, height: 768 })
   const map = await enterMap(page)
   const canvas = map.locator('canvas')
@@ -105,7 +106,7 @@ test('boundary download failure can retry without reloading the page', async ({ 
   available = true
   await page.getByRole('button', { name: '重新加载地图' }).click()
   await expect(page.locator('.three-map-canvas canvas')).toBeVisible()
-  await expect(page.locator('.three-map-marker')).toHaveCount(4)
+  await expect(page.locator('.three-map-marker')).toHaveCount(11)
   await expect(map.getByRole('alert')).toHaveCount(0)
 })
 

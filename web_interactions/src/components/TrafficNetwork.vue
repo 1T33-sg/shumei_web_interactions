@@ -1,36 +1,46 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Entity } from '../types/api'
-const props = defineProps<{ entities: Entity[]; activeId: string }>()
-const nodes = computed(() => props.entities.slice(0, 5).map((entity, index) => ({
-  entity,
-  x: [170, 385, 625, 280, 535][index] ?? 400,
-  y: [180, 292, 170, 430, 430][index] ?? 300,
+import { boundaryPath, locateTransportEntities, mapHeight, mapWidth } from '../transport/geography'
+import { useInteractions } from '../module'
+const props = defineProps<{ entities: Entity[]; activeId: string; latestValue?: number | null }>()
+const emit = defineEmits<{ select: [entity: Entity] }>()
+const { options } = useInteractions()
+const locations = computed(() => locateTransportEntities(props.entities))
+const nodes = computed(() => locations.value.nodes)
+const mapEntities = computed(() => nodes.value.map(node => ({
+  ...node.entity, longitude: node.longitude, latitude: node.latitude,
+  latest_value: node.entity.id === props.activeId ? props.latestValue ?? null : null,
 })))
+const railId = computed(() => mapEntities.value.find(entity => entity.id === props.activeId && entity.type === 'rail_station')?.id
+  ?? mapEntities.value.find(entity => entity.type === 'rail_station')?.id)
+const airportId = computed(() => mapEntities.value.find(entity => entity.id === props.activeId && entity.type === 'airport')?.id
+  ?? mapEntities.value.find(entity => entity.type === 'airport')?.id)
 </script>
 
 <template>
-  <div class="network-visual">
-    <svg viewBox="0 0 800 510" role="img" aria-label="安徽交通枢纽联动示意图，位置不代表地理比例">
+  <div class="network-visual" :class="{ 'three-transport': options.transportMap }">
+    <component v-if="options.transportMap" :is="options.transportMap" :entities="mapEntities" :rail-id="railId" :airport-id="airportId" :demo="options.mode === 'demo'" @select="emit('select', $event)" />
+    <svg v-else :viewBox="`0 0 ${mapWidth} ${mapHeight}`" role="img" aria-label="安徽交通枢纽地理分布图，北向上，位置按经纬度投影">
       <defs>
-        <linearGradient id="network-line" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00d4ff" stop-opacity=".18"/><stop offset=".5" stop-color="#00d4ff" stop-opacity=".9"/><stop offset="1" stop-color="#3a7bd5" stop-opacity=".22"/></linearGradient>
         <filter id="network-glow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <path class="network-boundary" d="M356 35 L493 63 565 118 676 135 724 228 669 296 684 401 598 469 470 451 386 482 289 441 184 451 105 371 126 287 74 213 141 123 246 103Z" />
-      <g class="network-grid"><path d="M120 170H680M96 255H710M118 340H680M190 92V440M300 62V468M410 46V472M520 68V458M630 116V418" /></g>
-      <template v-for="(node, index) in nodes" :key="node.entity.id">
-        <line v-if="index" :x1="nodes[0]?.x" :y1="nodes[0]?.y" :x2="node.x" :y2="node.y" class="network-route" />
-      </template>
-      <g v-for="node in nodes" :key="node.entity.id" :transform="`translate(${node.x} ${node.y})`" :class="['network-node', { active: node.entity.id === activeId }]">
-        <circle class="network-ripple" r="24"/><circle class="network-core" r="10" filter="url(#network-glow)"/><circle class="network-center" r="4"/>
-        <text x="18" y="-12">{{ node.entity.name }}</text><text x="18" y="8" class="node-type">{{ node.entity.type === 'airport' ? '机场 · 旅客吞吐量' : '铁路站 · 发送量' }}</text>
+      <path class="network-boundary" :d="boundaryPath" fill-rule="evenodd" />
+      <g class="network-north" transform="translate(705 58)" aria-hidden="true"><path d="M0 22V-15M-7 -3L0 -17L7 -3"/><text x="0" y="-28" text-anchor="middle">北 N</text></g>
+      <g v-for="node in nodes" :key="node.entity.id" :data-entity-id="node.entity.id" :data-longitude="node.longitude" :data-latitude="node.latitude" :transform="`translate(${node.x} ${node.y})`" :class="['network-node', { active: node.entity.id === activeId }]">
+        <title>{{ node.entity.name }} · {{ node.longitude.toFixed(4) }}°E，{{ node.latitude.toFixed(4) }}°N</title>
+        <path class="node-leader" :d="`M0 0L${node.labelX / 2} ${node.labelY}L${node.labelX} ${node.labelY}`" />
+        <circle class="network-ripple" r="18"/><circle class="network-core" r="6" filter="url(#network-glow)"/><circle class="network-center" r="2.5"/>
+        <text :x="node.labelX" :y="node.labelY - 5" :text-anchor="node.labelAnchor">{{ node.entity.name }}</text><text :x="node.labelX" :y="node.labelY + 12" :text-anchor="node.labelAnchor" class="node-type">{{ node.entity.type === 'airport' ? '机场 · 旅客吞吐量' : '铁路站 · 发送量' }}</text>
       </g>
     </svg>
-    <div class="network-caption"><span><i class="network-key active" />当前对象</span><span><i class="network-key" />可选枢纽</span><span>示意网络 · 非地理比例</span></div>
+    <p v-if="locations.unlocated.length" class="network-unlocated" role="status">未定位：{{ locations.unlocated.map(entity => entity.name).join('、') }}（缺少有效坐标）</p>
+    <div v-if="!options.transportMap" class="network-caption"><span><i class="network-key active" />当前对象</span><span><i class="network-key" />交通枢纽</span><span>近似站址 · 北向上</span></div>
   </div>
 </template>
 
 <style scoped>
+.network-visual.three-transport { display: flex; flex-direction: column; min-height: 330px; }
 .network-visual {
   position: relative;
   width: 100%;
@@ -53,20 +63,13 @@ svg { width: 100%; height: calc(100% - 28px); display: block; }
   filter: drop-shadow(0 0 10px rgba(0, 196, 255, .22));
 }
 
-.network-grid path {
+.network-north path, .node-leader {
   fill: none;
-  stroke: rgba(0, 212, 255, .075);
+  stroke: rgba(112, 195, 230, .55);
   stroke-width: 1;
-  stroke-dasharray: 3 8;
 }
-
-.network-route {
-  stroke: url(#network-line);
-  stroke-width: 2.2;
-  stroke-dasharray: 10 9;
-  fill: none;
-  animation: route-flow 2.8s linear infinite;
-}
+.network-north text { fill: #82b5d2; font-size: 13px; }
+.network-unlocated { position: absolute; left: 15px; bottom: 30px; max-width: calc(100% - 30px); margin: 0; color: #ffb64c; font-size: 10px; }
 
 .network-node text {
   fill: #a8c9e7;
@@ -96,10 +99,9 @@ svg { width: 100%; height: calc(100% - 28px); display: block; }
 .network-key { width: 7px; height: 7px; border-radius: 50%; background: #00bde8; box-shadow: 0 0 7px rgba(0, 212, 255, .7); }
 .network-key.active { background: #ffb64c; box-shadow: 0 0 7px rgba(255, 182, 76, .7); }
 
-@keyframes route-flow { to { stroke-dashoffset: -38; } }
 @keyframes node-pulse { 0% { transform: scale(.45); opacity: .9; } 80%, 100% { transform: scale(1.25); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .network-route, .network-ripple { animation: none; }
+  .network-ripple { animation: none; }
 }
 </style>
