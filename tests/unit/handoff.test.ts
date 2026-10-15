@@ -2,10 +2,10 @@ import { expect, it } from 'vitest'
 import { createInteractions } from '../../web_interactions/src/module'
 import { normalizeForecast } from '../../web_interactions/src/api/forecast'
 import { createDemoApi } from '../../web_interactions/dev/mock'
-import { dashboardDemo } from '../../web_dashboard/src/app/demo-api'
-import { resolveEntityRoute, parseAnalysisIds } from '../../web_dashboard/src/app/integration'
-import { DEMO_SCENIC_IDS } from '../../web_dashboard/src/app/demo'
-import type { ComparisonResult } from '../../web_dashboard/src/app/types'
+import { dashboardDemo } from '../../web_interactions/src/host/demo-api'
+import { resolveEntityRoute, parseAnalysisIds } from '../../web_interactions/src/host/integration'
+import { DEMO_SCENIC_IDS } from '../../web_dashboard/tests/demoData'
+import type { ComparisonResult } from '../../web_interactions/src/types/api'
 const make = () => createInteractions({resolveEntityRoute, fetcher:createDemoApi('normal',dashboardDemo('normal'))})
 it('routes scenic, rail and unknown identities without default substitution', async()=>{
  const app=make();await app.auth.login('demo','demo2026')
@@ -42,7 +42,7 @@ it('validates runtime analysis configuration',()=>{
 })
 it('compares two scenic series and validates metric compatibility',async()=>{
  const app=make();await app.auth.login('demo','demo2026')
- const body={series:Object.values(DEMO_SCENIC_IDS).map(entity_id=>({entity_id,metric:'scenic_visits'})),grain:'month',start:'2026-01-01',end:'2026-09-30',display_mode:'separate_axes'}
+ const body={series:[DEMO_SCENIC_IDS.huangshan, DEMO_SCENIC_IDS.jiuhua].map(entity_id=>({entity_id,metric:'scenic_visits'})),grain:'month',start:'2026-01-01',end:'2026-09-30',display_mode:'separate_axes'}
  const result=(await app.client.post<ComparisonResult>('/analytics/compare',body)).data
  expect(result.series).toHaveLength(2);expect(result.series[0].points).toHaveLength(9)
  expect(result.series[0].points[0].value).not.toBe(result.series[1].points[0].value)

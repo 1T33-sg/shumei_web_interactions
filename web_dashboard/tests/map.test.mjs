@@ -198,13 +198,9 @@ test('完整边界三角化保留区域面积与孔洞，原点位投影可逆�
     assert.ok(Math.abs(actualArea - expectedArea) / expectedArea < 1e-5, city.properties.name)
     mesh.dispose()
   }
-  const locations = [
-    { longitude: 118.17, latitude: 30.13 },
-    { longitude: 117.82, latitude: 30.48 },
-    { longitude: 117.29, latitude: 31.79 },
-    { longitude: 116.97, latitude: 31.99 },
-  ]
-  for (const entity of locations) {
+  const fixtureCode = (await transformWithEsbuild(await readFile(path.join(project, 'tests/demoData.ts'), 'utf8'), 'demoData.ts', { loader: 'ts', format: 'esm' })).code
+  const { demoEntities } = await import('data:text/javascript;base64,' + Buffer.from(fixtureCode).toString('base64'))
+  for (const entity of demoEntities) {
     assert.ok(geometry.hasCoordinates(entity))
     const point = geometry.worldPosition(entity.longitude, entity.latitude)
     const [longitude, latitude] = geometry.unproject(point.x, point.z)

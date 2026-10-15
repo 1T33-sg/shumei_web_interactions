@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Message from 'primevue/message'
 import TrendChart from '../components/TrendChart.vue'
+import TrafficNetwork from '../components/TrafficNetwork.vue'
 import StatePanel from '../components/StatePanel.vue'
 import SourceDrawer from '../components/SourceDrawer.vue'
 import { useInteractions } from '../module'
@@ -61,6 +62,11 @@ async function predict() {
   finally { if (current === forecastGeneration) predicting.value = false }
 }
 function ask() { void router.push({ name: 'b-assistant', query: { entity_id: entityId.value, question: `分析${entity.value?.name}的${metricName.value}变化趋势` } }) }
+function selectMapEntity(selected: Entity) {
+  if (!entities.value.some(entity => entity.id === selected.id) || selected.id === entityId.value) return
+  entityId.value = selected.id
+  void router.replace({ query: { ...route.query, entity_id: selected.id } })
+}
 watch(() => route.query.entity_id, value => { if (typeof value === 'string' && entities.value.some(e => e.id === value)) { entityId.value = value; void loadSeries() } })
 onMounted(loadCatalog)
 </script>
@@ -97,6 +103,11 @@ onMounted(loadCatalog)
         <article class="panel stat-card"><div class="stat-top"><span>下一周期预测</span><span class="icon-tile lavender"><i class="pi pi-chart-line" /></span></div><div class="stat-value">{{ forecast?.status === 'ready' ? numberText((forecast.forecast_points[0]?.value ?? 0) / 10000) : '—' }}<span>万人次</span></div><div class="stat-bottom"><span class="tiny-dot lavender" />{{ forecast?.status === 'ready' ? '基线模型 · 含预测区间' : '尚无可用预测' }}</div></article>
         <article class="panel stat-card"><div class="stat-top"><span>数据覆盖率</span><span class="icon-tile"><i class="pi pi-check-circle" /></span></div><div class="stat-value">{{ numberText(series.coverage_ratio * 100) }}<span>%</span></div><div class="stat-bottom">{{ series.points.length }} 个统计周期 · {{ series.missing_periods.length }} 个缺失区间</div></article>
       </div>
+      <article class="panel traffic-map-panel" v-if="options.transportMap">
+        <div class="panel-heading"><div><h2>安徽交通枢纽分布</h2><p>点击地点切换交通枢纽，按各自指标查看客流。</p></div></div>
+        <TrafficNetwork :entities="entities" :active-id="entityId" :latest-value="last?.value" @select="selectMapEntity" />
+        <p class="small muted">{{ options.mode === 'demo' ? '位置与数值为静态样例 · ' : '' }}铁路发送量与机场吞吐量分别统计，不相加。</p>
+      </article>
       <div class="transport-grid">
         <article class="panel chart-panel"><div class="panel-heading"><div><h2>{{ entity?.name }} · 客流趋势</h2><p>{{ metricName }} / 月度来源保留原始粒度</p></div><div class="chart-legend"><span><b class="legend-line" />历史值</span><span><b class="legend-line forecast" />预测值</span><span><b class="legend-band" />预测区间</span></div></div><TrendChart :points="series.points" :forecast="forecast?.status === 'ready' ? forecast.forecast_points : []" :label="metricName" /><div class="chart-footer"><span><i class="pi pi-database" />{{ options.mode === 'demo' ? '本地演示数据 · 所有数值均为模拟' : `更新于 ${dateText(last?.ingested_at, true)}` }}</span><button class="text-link" @click="sourceId = last?.source_ids[0] ?? null">查看来源 <i class="pi pi-arrow-up-right" /></button></div></article>
         <aside class="panel forecast-panel"><span class="eyebrow">HISTORICAL FORECAST</span><h2>历史客流预测</h2><p class="muted">基于历史序列观察未来趋势，预测区间反映结果的不确定性。</p><label class="field">预测跨度<Select :pt="{ overlay: { class: 'b-ui b-select-overlay' } }" v-model="horizon" :options="[1,2,3,4,5,6].map(value => ({ value, label: `${value} ${grain === 'week' ? '周' : '个月'}` }))" option-label="label" option-value="value" aria-label="预测跨度" /></label><Button label="生成预测" icon="pi pi-chart-line" :disabled="grain === 'day'" :loading="predicting" @click="predict" /><p v-if="grain === 'day'" class="muted">历史预测仅支持周或月粒度。</p><Message v-if="forecastError" severity="error">{{ forecastError }}</Message><Message v-if="forecast && forecast.status !== 'ready'" severity="warn">{{ forecast.reason || '历史数据不足，暂不生成预测' }}</Message><div v-if="forecast?.backtest" class="model-details"><div><span>回测误差 sMAPE</span><strong>{{ forecast.backtest.smape }}%</strong></div><div><span>平均绝对误差</span><strong>{{ numberText(forecast.backtest.mae) }} 人次</strong></div><div><span>回测样本</span><strong>{{ forecast.backtest.sample_count }} 个</strong></div><div><span>模型版本</span><code>{{ forecast.model_version }}</code></div></div><span v-if="options.mode === 'demo'" class="muted small">此处模型与回测结果均为演示值。</span></aside>
@@ -106,3 +117,7 @@ onMounted(loadCatalog)
     <SourceDrawer :source-id="sourceId" @close="sourceId = null" />
   </section>
 </template>
+<style scoped>
+.traffic-map-panel { padding: 12px 14px; }
+.traffic-map-panel :deep(.network-visual) { height: 360px; }
+</style>

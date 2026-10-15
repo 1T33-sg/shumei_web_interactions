@@ -192,8 +192,8 @@ function formatWan(value: number) {
         </section>
 
         <article class="screen-panel network-panel">
-          <h2><span>安徽交通枢纽联动示意</span><small>示意网络 · 非地理比例</small></h2>
-          <div class="network-wrap"><TrafficNetwork :entities="entities" :active-id="selectedId" /></div>
+          <h2><span>安徽交通枢纽地理分布</span><small>按经纬度定位 · 北向上</small></h2>
+          <div class="network-wrap"><TrafficNetwork :entities="entities" :active-id="selectedId" :latest-value="series?.points.at(-1)?.value" @select="emit('update:entityId', $event.id); emit('query')" /></div>
         </article>
 
         <article class="screen-panel table-panel">

@@ -3,13 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter web-dashboard dev",
+    "dev": "vite --config vite.config.ts",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @anhui/web-interactions build && pnpm typecheck && vite build --config vite.config.ts",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^7.3.0",
     "vitest": "^4.0.0",
     "@playwright/test": "^1.56.0",
     "typescript": "~5.9.3",

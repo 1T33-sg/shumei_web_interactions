@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createDemoApi } from '../../web_interactions/dev/mock'
-import { dashboardDemo } from '../../web_dashboard/src/app/demo-api'
+import { dashboardDemo } from '../../web_interactions/src/host/demo-api'
 import { analysisId, demoCameraAnalyses, videos } from '../../web_interactions/dev/fixtures'
 
 const modelVersion = 'demo-damped-trend-simulated-v1'

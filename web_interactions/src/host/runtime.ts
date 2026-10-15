@@ -1,6 +1,8 @@
-import { createInteractions } from '@anhui/web-interactions'
-import { createDemoApi } from '@anhui/web-interactions/demo'
-import { analysisId, videos } from '@anhui/web-interactions/fixtures'
+import { markRaw } from 'vue'
+import { createInteractions } from '../module'
+import { createDemoApi } from '../../dev/mock'
+import { analysisId, videos } from '../../dev/fixtures'
+import AnhuiMap from '../../../web_dashboard/src/components/map/AnhuiMap.vue'
 import { resolveEntityRoute, parseAnalysisIds } from './integration'
 import { dashboardDemo } from './demo-api'
 export const dataMode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'demo'
@@ -14,6 +16,7 @@ if (dataMode === 'api') {
 export const interactions = createInteractions({
   mode: dataMode, defaultRedirect: '/', allowedRedirects: ['/', '/scenic', '/holidays', '/transport', '/events', '/assistant', '/video'],
   transportLayout: 'standard', resolveEntityRoute,
+  transportMap: markRaw(AnhuiMap),
   analysisIds,
   ...(dataMode === 'demo' ? { fetcher: createDemoApi(scenario, dashboardDemo(scenario)), analysisIds: { [videos[0]!.id]: analysisId }, cameraNames: { 'demo-east-gate': '黄山 · 演示东入口' } } : {}),
   regions: [{ label: '合肥市', value: '340100' }, { label: '黄山市', value: '341000' }],

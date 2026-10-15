@@ -1,12 +1,18 @@
 import type { Entity, EventItem, Point, VideoItem, CountPoint, Counts } from '../src/types/api'
 export const entities: Entity[] = [
-  { id: '10000000-0000-4000-8000-000000000001', name: '合肥南站', type: 'rail_station', region_code: '340100', available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
-  { id: '10000000-0000-4000-8000-000000000002', name: '黄山北站', type: 'rail_station', region_code: '341000', available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
-  { id: '10000000-0000-4000-8000-000000000003', name: '合肥新桥机场', type: 'airport', region_code: '340100', available_metrics: ['airport_throughput'], available_grains: ['month'], status: 'available' },
+  { id: '10000000-0000-4000-8000-000000000001', name: '合肥南站', type: 'rail_station', region_code: '340100', longitude: 117.29, latitude: 31.79, available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
+  { id: '10000000-0000-4000-8000-000000000002', name: '黄山北站', type: 'rail_station', region_code: '341000', longitude: 118.28, latitude: 29.82, available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
+  { id: '10000000-0000-4000-8000-000000000003', name: '合肥新桥机场', type: 'airport', region_code: '340100', longitude: 116.97, latitude: 31.99, available_metrics: ['airport_throughput'], available_grains: ['month'], status: 'available' },
+  { id: '10000000-0000-4000-8000-000000000004', name: '芜湖站', type: 'rail_station', region_code: '340200', longitude: 118.42, latitude: 31.36, available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
+  { id: '10000000-0000-4000-8000-000000000005', name: '安庆站', type: 'rail_station', region_code: '340800', longitude: 117.06, latitude: 30.53, available_metrics: ['rail_departures'], available_grains: ['month'], status: 'available' },
 ]
 export const sourceId = '20000000-0000-4000-8000-000000000001'
 export function seriesPoints(entity: Entity): Point[] {
-  const values = entity.type === 'airport' ? [76, 84, 79, 83, 91, 87, 98, 106, 93] : entity.name === '黄山北站' ? [28, 39, 32, 43, 48, 42, 56, 61, 49] : [118, 143, 126, 139, 152, 144, 172, 184, 154.8]
+  const values = entity.type === 'airport' ? [76, 84, 79, 83, 91, 87, 98, 106, 93]
+    : entity.name === '黄山北站' ? [28, 39, 32, 43, 48, 42, 56, 61, 49]
+    : entity.name === '芜湖站' ? [38, 43, 40, 46, 49, 45, 57, 59, 52.7]
+    : entity.name === '安庆站' ? [20, 24, 22, 25, 27, 24, 31, 33, 28.6]
+    : [118, 143, 126, 139, 152, 144, 172, 184, 154.8]
   return values.map((value, i) => ({
     metric: entity.available_metrics[0]!, value: value * 10000, unit: '人次', period_start: `2026-${String(i + 1).padStart(2, '0')}-01`,
     period_end: `2026-${String(i + 1).padStart(2, '0')}-${new Date(2026, i + 1, 0).getDate()}`, grain: 'month',

@@ -417,17 +417,12 @@ export function createAnhuiMap(host: HTMLElement, initial: MapOptions, data: Map
 
   function fitCamera(resetOrientation = false) {
     if (resetOrientation) {
-      // 先消耗拖拽留下的惯性，防止下一帧又把复位后的相机转走。
-      const damping = controls.enableDamping
-      controls.enableDamping = false
-      controls.update()
       controls.target.copy(mapCenter)
       camera.position.copy(mapCenter).add(topView ? new THREE.Vector3(0, 120, .12) : new THREE.Vector3(4, 110, 55))
       camera.up.set(0, 1, 0)
       camera.lookAt(mapCenter)
       camera.zoom = 1
       controls.update()
-      controls.enableDamping = damping
     }
     camera.updateMatrixWorld(true)
     let halfWidth = 0

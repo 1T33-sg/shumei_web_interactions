@@ -1,5 +1,5 @@
 import type { RouteLocationRaw } from 'vue-router'
-import type { Entity, Interactions } from '@anhui/web-interactions'
+import type { Entity, Interactions } from '../index'
 export async function resolveEntityRoute(id: string, client: Interactions['client']): Promise<RouteLocationRaw | null> {
  for (let page = 1; ; page++) {
   const result = await client.get<Entity[]>(`/catalog/entities?page=${page}&page_size=100`)

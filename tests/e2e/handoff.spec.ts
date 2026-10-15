@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createDemoApi } from '../../web_interactions/dev/mock'
-import { dashboardDemo } from '../../web_dashboard/src/app/demo-api'
-import { DEMO_SCENIC_IDS } from '../../web_dashboard/src/app/demo'
+import { dashboardDemo } from '../../web_interactions/src/host/demo-api'
+import { DEMO_SCENIC_IDS } from '../../web_dashboard/tests/demoData'
 import { analysisId } from '../../web_interactions/dev/fixtures'
 const scenicId=DEMO_SCENIC_IDS.jiuhua
 async function api(page:import('@playwright/test').Page, options:{unavailable?:boolean}={}) {
@@ -50,13 +50,14 @@ test('API video associates known analysis, handles 409 then predicts',async({pag
  await expect(page.locator('.chart-footer')).toContainText('demo-damped-trend-simulated-v1')
  await expect(page.locator('.video-trend-panel tbody tr').filter({has:page.getByRole('cell',{name:'预测',exact:true,includeHidden:true})})).toHaveCount(6)
 })
-test('scenic comparison is available and resets after filter changes',async({page})=>{
- await page.goto('/scenic');await page.getByRole('button',{name:'进入演示工作台'}).click()
- await page.getByRole('button',{name:'生成对比'}).click()
- await expect(page.locator('.comparison-grid article')).toHaveCount(2)
- await expect(page.locator('.comparison-note')).toContainText('不相加')
- const history = await page.locator('.scenic-dashboard').boundingBox(), comparison = await page.locator('.comparison-panel').boundingBox()
- expect(comparison!.y).toBeGreaterThanOrEqual(history!.y + history!.height)
- await page.getByRole('button',{name:'时间粒度',exact:true}).click();await page.getByRole('option',{name:'按周'}).click()
- await expect(page.locator('.comparison-grid')).toHaveCount(0)
+test('B transport map reuses A map and selects the requested station',async({page})=>{
+ await page.goto('/transport');await page.getByRole('button',{name:'进入演示工作台'}).click()
+ const map=page.locator('.traffic-map-panel .three-map-stage')
+ await expect(map.locator('.three-map-detail')).toHaveText('16 个地级市 · 104 个区县')
+ await expect(map.locator('.three-map-marker')).toHaveCount(5)
+ await map.getByRole('button',{name:/芜湖站，铁路站/}).click()
+ await expect(page).toHaveURL(/entity_id=10000000-0000-4000-8000-000000000004/)
+ await expect(page.locator('.transport-grid')).toContainText('芜湖站')
+ await expect(map.getByRole('button',{name:/芜湖站，铁路站/})).toHaveClass(/selected/)
+ await page.screenshot({path:'test-results/transport-map-1920.png',fullPage:true})
 })

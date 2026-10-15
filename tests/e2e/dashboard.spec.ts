@@ -62,9 +62,13 @@ test('scenic and holiday filters', async ({page}) => {
  await page.getByRole('link',{name:/假期专题/}).click()
  await page.getByRole('button',{name:'假期类型',exact:true}).click()
  await page.getByRole('option',{name:'国庆',exact:true}).click()
+ for (const name of ['2024 年国庆假期', '2025 年国庆假期']) {
+  await page.getByRole('button',{name:'添加假期',exact:true}).click()
+  await page.getByRole('option',{name,exact:true}).click()
+ }
  await page.getByRole('button',{name:'比较方式',exact:true}).click()
  await page.getByRole('option',{name:'假期总量',exact:true}).click()
- await expect(page.locator('.state-box').filter({hasText:'两个假期天数不同'})).toBeVisible()
+ await expect(page.locator('.compare-panel .state-box').filter({hasText:'所选假期天数不同'})).toBeVisible()
 })
 test('map entity navigation with component stub', async ({page}) => {
  await page.route(/\/src\/components\/map\/AnhuiMap\.vue$/, async route => {

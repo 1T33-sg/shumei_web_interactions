@@ -1,7 +1,7 @@
-import type { DemoHandler } from '@anhui/web-interactions/demo'
-import { entities, seriesPoints, events } from '@anhui/web-interactions/fixtures'
-import { demoEntities, demoMetrics, demoOverview, demoSeries, demoForecast, demoHolidays, demoHolidayCompare } from './demo'
-import type { TrendGrain } from './types'
+import type { DemoHandler } from '../../dev/mock'
+import { entities, seriesPoints, events } from '../../dev/fixtures'
+import { demoEntities, demoMetrics, demoOverview, demoSeries, demoForecast, demoHolidays, demoHolidayCompare } from '../../../web_dashboard/tests/demoData'
+import type { TrendGrain } from '../../../web_dashboard/src/app/types'
 export function dashboardDemo(scenario: string): DemoHandler {
  const ok = (data: unknown) => new Response(JSON.stringify({ data, meta: { request_id: 'demo-dashboard' } }))
  const fail = (status: number, message: string) => new Response(JSON.stringify({ error: { code: 'invalid_query', message } }), { status })
@@ -11,7 +11,7 @@ export function dashboardDemo(scenario: string): DemoHandler {
   const grain = (q.get('grain') ?? body.grain ?? 'month') as TrendGrain
   const empty = scenario === 'empty'
   if (path === '/catalog/entities') {
-   const all = [...demoEntities.filter(e => e.type === 'scenic'), ...entities.map(e => ({ ...e, longitude: demoEntities.find(d => d.id === e.id)?.longitude ?? 118.28, latitude: demoEntities.find(d => d.id === e.id)?.latitude ?? 29.82 }))]
+   const all = [...demoEntities.filter(e => e.type === 'scenic'), ...entities]
    const filtered = empty ? [] : all.filter(e => !q.get('type') || e.type === q.get('type'))
    const size = Math.min(100, Math.max(1, Number(q.get('page_size')) || 20)), page = Math.max(1, Number(q.get('page')) || 1)
    return new Response(JSON.stringify({data:filtered.slice((page-1)*size,page*size),meta:{request_id:'demo-catalog',page,page_size:size,total:filtered.length}}))
@@ -24,7 +24,7 @@ export function dashboardDemo(scenario: string): DemoHandler {
     const entity = entities.find(e => e.id === card.entity_id)
     if (entity) { card.value = grain === 'month' ? seriesPoints(entity).at(-1)!.value : null; card.status = grain === 'month' ? 'demo' : 'unsupported_grain' }
    }
-   for (const point of result.map_entities) { const e = entities.find(e => e.id === point.id); if (e) { point.latest_value = seriesPoints(e).at(-1)!.value; point.available_grains = e.available_grains } }
+   for (const point of result.map_entities) { const e = entities.find(e => e.id === point.id); if (e) { point.latest_value = grain === 'month' ? seriesPoints(e).at(-1)!.value : null; point.available_grains = e.available_grains } }
    result.active_events_count = events.filter(e => e.status === 'active').length
    if (empty) { result.cards = []; result.map_entities = []; result.active_events_count = 0 }
    return ok(result)
