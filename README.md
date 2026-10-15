@@ -28,7 +28,9 @@ pnpm test:e2e
 
 演示故障场景在首次打开时传入 `?scenario=empty|error|insufficient|expired|invalid|network`。分别覆盖空数据、503、预测不足、401、422、网络断开。
 
-地图可配置 `VITE_AMAP_KEY` 和 `VITE_AMAP_SECURITY_CODE`；无配置时显示占位，其他页面可用。VITE 变量会进入浏览器构建，正式部署按地图供应商要求配置安全代理。本次不提交密钥，不验收真实地图服务。
+总览地图已同步参考项目 `../web_dashboard` 的 Three.js 立体行政区地图，无需高德 Key。地图使用随前端发布的 `web_dashboard/public/geo/anhui-boundaries.json`，包含 16 个地级市、104 个区县及完整边界，来源与精度说明见同目录的 `README.md`。
+
+支持滚轮缩放、拖拽旋转、右键平移、俯视/立体切换和返回全省；地级市、区县和全部地名可分别切换。景区、铁路站、机场沿用整合版原有坐标与详情跳转，动态连线表示当前景区与铁路站、机场的关联示意，不代表实际出行轨迹。保留演示模式的静态样例标记。运行 `pnpm --filter web-dashboard test:map` 可检查地图挂载、更新、卸载、边界加载重试及完整几何投影。
 
 ## 目录与来源
 

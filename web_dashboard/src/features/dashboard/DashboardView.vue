@@ -15,6 +15,9 @@ const router = useRouter()
 const { grain, loading, error, overview, series, forecast, events, reload } = useOverview()
 const isDemo = computed(() => backendMode.value === 'demo')
 const latestPoint = computed(() => series.value?.points.at(-1))
+const mapScenicId = computed(() => series.value?.entity.id ?? overview.value?.map_entities.find(entity => entity.type === 'scenic')?.id)
+const mapRailId = computed(() => overview.value?.map_entities.find(entity => entity.type === 'rail_station')?.id)
+const mapAirportId = computed(() => overview.value?.map_entities.find(entity => entity.type === 'airport')?.id)
 const transportNotice = ref('')
 const grainOptions = [{ value: 'week', label: '按周' }, { value: 'month', label: '按月' }]
 
@@ -64,10 +67,10 @@ function openEntity(entity: Entity) {
         </section>
       </div>
       <section class="panel section-panel map-panel">
-        <div class="panel-head"><h2 class="panel-title">客流对象分布</h2><span class="panel-kicker">MAP / 点击景区进入详情</span></div>
-        <AnhuiMap :entities="overview.map_entities" @select="openEntity" />
+        <div class="panel-head"><h2 class="panel-title">客流对象分布</h2><span class="panel-kicker">MAP / 点击对象进入详情</span></div>
+        <AnhuiMap :entities="overview.map_entities" :scenic-id="mapScenicId" :rail-id="mapRailId" :airport-id="mapAirportId" :demo="isDemo" @select="openEntity" />
         <div v-if="transportNotice" class="transport-notice" role="status">{{ transportNotice }}</div>
-        <div class="meta-strip"><span>覆盖对象 <strong>{{ overview.map_entities.length }} 个</strong></span><span>景区、铁路发送与机场吞吐量分开统计</span><span v-if="isDemo">位置与数值为静态样例</span></div>
+        <div class="meta-strip"><span>覆盖对象 <strong>{{ overview.map_entities.length }} 个</strong></span><span>动态连线仅示意地点关联，非实际出行轨迹</span><span v-if="isDemo">位置与数值为静态样例</span></div>
       </section>
       <div class="dashboard-column">
         <section class="panel section-panel chart-panel">
