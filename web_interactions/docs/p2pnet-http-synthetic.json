@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "notice": "依据 D a9e338e 的公开 schema 构造，非真实 HTTP 回执或模型推理证据",
+  "analysis_request": {
+    "method": "POST", "path": "/api/v1/videos/40000000-0000-4000-8000-000000000001/analyses",
+    "body": { "count_model": "p2pnet", "weights_version": "leader-SHTechA-50604773", "roi": { "points": [[0,0],[1,0],[1,1]] }, "sample_interval_seconds": 10, "aggregation_minutes": 5, "inference_engine": "pytorch", "device": "CPU" }
+  },
+  "analysis_response": {
+    "data": { "job_id": "80000000-0000-4000-8000-000000000001", "analysis_id": "60000000-0000-4000-8000-000000000001", "status": "queued", "video_id": "40000000-0000-4000-8000-000000000001", "count_metric": "camera_visible_people", "inference_engine": "pytorch" }, "meta": { "request_id": "synthetic" }
+  },
+  "counts_request": { "method": "GET", "path": "/api/v1/videos/40000000-0000-4000-8000-000000000001/counts?analysis_id=60000000-0000-4000-8000-000000000001&grain=5min" },
+  "counts_response": {
+    "data": {
+      "analysis_id": "60000000-0000-4000-8000-000000000001", "metric": "camera_visible_people", "roi": { "points": [[0,0],[1,0],[1,1]] }, "grain": "5min",
+      "count_model": "p2pnet", "weights_version": "leader-SHTechA-50604773", "confidence_threshold": 0.5,
+      "inference_engine": "pytorch", "device": "CPU", "openvino_version": null, "sample_interval_seconds": 10,
+      "weights_sha256": null, "model_source_revision": null, "manual_validation": null,
+      "points": [
+        { "metric": "camera_visible_people", "value": 1.5, "unit": "人", "grain": "5min", "recorded_at": null, "period_start": "2026-10-15T09:00:00+08:00", "period_end": "2026-10-15T09:05:00+08:00", "sample_count": 30, "aggregation_rule": "median", "quality_status": "good", "source_ids": ["synthetic"], "published_at": null, "ingested_at": null },
+        { "metric": "camera_visible_people", "value": null, "unit": "人", "grain": "5min", "recorded_at": null, "period_start": "2026-10-15T09:05:00+08:00", "period_end": "2026-10-15T09:10:00+08:00", "sample_count": 0, "aggregation_rule": "median", "quality_status": "unavailable", "source_ids": ["synthetic"], "published_at": null, "ingested_at": null }
+      ]
+    }, "meta": { "request_id": "synthetic" }
+  },
+  "frame_point": { "metric": "camera_visible_people", "value": 2, "unit": "人", "grain": "frame", "recorded_at": "2026-10-15T09:00:00+08:00", "period_start": null, "period_end": null, "sample_count": 1, "aggregation_rule": null, "quality_status": "good", "source_ids": ["synthetic"], "published_at": null, "ingested_at": null },
+  "not_ready_response": { "http_status": 409, "body": { "error": { "code": "analysis_not_ready", "message": "分析结果尚未就绪", "details": {} }, "request_id": "synthetic" } }
+}

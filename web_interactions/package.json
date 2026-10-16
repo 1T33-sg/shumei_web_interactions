@@ -13,8 +13,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
-    "test": "pnpm -w test",
-    "test:e2e": "pnpm -w test:e2e",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "preview": "vite preview --host 127.0.0.1"
   },
   "peerDependencies": {

@@ -11,6 +11,7 @@ export interface InteractionOptions {
   transportMap?: Component
   resolveEntityRoute?: (entityId: string, client: ApiClient) => Promise<RouteLocationRaw | null>
   analysisIds?: Record<string, string>
+  analysisJobs?: Record<string, string>
   cameraNames?: Record<string, string>
   regions?: { label: string; value: string }[]
 }

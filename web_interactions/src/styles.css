@@ -150,6 +150,12 @@
   .b-ui .chat-panel { min-height: 440px; padding: 0; }
   .b-ui .chat-welcome { padding: 20px; }
 }
+.b-ui .evidence-body { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.b-ui .evidence-citation { align-items: start; }
+.b-ui .analysis-status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.b-ui .analysis-admin summary { cursor: pointer; }
+.b-ui .analysis-admin .filters { margin-top: 14px; }
+.b-ui .analysis-details dd { overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   .b-ui .page-heading { align-items: flex-start; gap: 10px; }
   .b-ui .panel { padding: 12px; }

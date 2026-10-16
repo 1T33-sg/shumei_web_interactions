@@ -39,7 +39,7 @@ export function query(values: Record<string, string | number | undefined>) {
   for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '') params.set(key, String(value))
   return params.toString()
 }
-export function safeSourceUrl(value?: string): string | undefined {
+export function safeSourceUrl(value?: string | null): string | undefined {
   if (!value) return undefined
   try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.href : undefined } catch { return undefined }
 }

@@ -6,6 +6,7 @@ import { interactionRoutes } from '../src/routes'
 import { interactionTheme } from '../src/theme'
 import { createDemoApi } from './mock'
 import { analysisId, videos } from './fixtures'
+import { syntheticJobIds } from './synthetic'
 import App from './BigscreenApp.vue'
 import 'primeicons/primeicons.css'
 import '../src/styles.css'
@@ -13,9 +14,10 @@ import './shell.css'
 import './bigscreen-shell.css'
 
 const mode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'demo'
+const scenario = new URLSearchParams(location.search).get('scenario') ?? 'p2pnet'
 const module = createInteractions({
   mode,
-  ...(mode === 'demo' ? { fetcher: createDemoApi(new URLSearchParams(location.search).get('scenario') ?? 'normal'), analysisIds: { [videos[0]!.id]: analysisId }, cameraNames: { 'demo-east-gate': '黄山 · 演示东入口' } } : {}),
+  ...(mode === 'demo' ? { fetcher: createDemoApi(scenario), analysisIds: { [videos[0]!.id]: analysisId }, analysisJobs: scenario.startsWith('p2pnet') ? syntheticJobIds : {}, cameraNames: { 'demo-east-gate': '黄山 · 演示东入口' } } : {}),
   regions: [{ label: '合肥市', value: '340100' }, { label: '黄山市', value: '341000' }],
 })
 const router = createRouter({ history: createWebHistory(), routes: [{ path: '/', redirect: '/transport' }, ...interactionRoutes, { path: '/:pathMatch(.*)*', redirect: '/transport' }] })

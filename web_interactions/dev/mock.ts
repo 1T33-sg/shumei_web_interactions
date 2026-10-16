@@ -1,6 +1,7 @@
 import type { Fetcher } from '../src/api/client'
 import type { CameraForecast, CameraForecastPoint, CountPoint } from '../src/types/api'
 import { chinaTime, demoAnalysisIds, demoCameraAnalyses, entities, events, seriesPoints, sourceId, videos } from './fixtures'
+import { createSyntheticHandler } from './synthetic'
 
 export type DemoHandler = (url: URL, init?: RequestInit) => Response | undefined
 function isoTime(value: unknown): number | null {
@@ -12,10 +13,11 @@ function validCameraPoint(point: CountPoint): boolean {
   return point.value !== null && Number.isFinite(point.value) && point.value >= 0 && ['demo', 'verified'].includes(point.quality_status)
 }
 export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher {
+  const synthetic = createSyntheticHandler(scenario)
   let signedIn = false
   const ok = (data: unknown, meta = {}) => new Response(JSON.stringify({ data, meta: { request_id: 'demo-request', ...meta } }), { status: 200 })
   const fail = (status: number, code: string, message: string) => new Response(JSON.stringify({ error: { code, message, details: {} }, request_id: 'demo-request' }), { status })
-  const session = () => ({ user: { id: 'demo-user', username: 'demo', display_name: '演示访客', role: 'viewer' }, csrf_token: 'demo-csrf', expires_at: '2099-01-01T00:00:00+08:00' })
+  const session = () => ({ user: { id: 'demo-user', username: 'demo', display_name: '演示访客', role: synthetic ? 'admin' : 'viewer' }, csrf_token: 'demo-csrf', expires_at: '2099-01-01T00:00:00+08:00' })
   return async (input, init) => {
     await new Promise(resolve => setTimeout(resolve, 160))
     const url = new URL(input, 'http://demo.invalid')
@@ -33,7 +35,7 @@ export function createDemoApi(scenario = 'normal', extra?: DemoHandler): Fetcher
     if (scenario === 'network') throw new Error('模拟网络断开')
     if (scenario === 'expired') return fail(401, 'expired', '会话已失效')
     if (scenario === 'invalid') return fail(422, 'invalid_query', '查询参数无效')
-    const extended = extra?.(url, init)
+    const extended = synthetic?.(url, init) ?? extra?.(url, init)
     if (extended) return extended
     if (path === '/catalog/entities') return ok(entities, { total: entities.length, page: 1, page_size: 100 })
     if (path.startsWith('/sources/')) return ok({ id: sourceId, publisher: '本地演示数据集', title: '交通客流界面演示数据', url: '', published_at: '2026-10-08T09:00:00+08:00', retrieved_at: '2026-10-08T10:00:00+08:00', coverage_start: '2026-01-01', coverage_end: '2026-09-30', native_grain: 'month', usage_note: '所有数值均为人工构造，仅用于界面和交互验证，不能用于研究结论或出行决策。', verification_status: 'demo' })

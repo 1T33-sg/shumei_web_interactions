@@ -35,8 +35,10 @@ function draw() {
     yAxis: { type: 'value', name: (divisor.value === 10000 ? '万' : '') + (props.unit || all.value[0]?.unit || '人次'), nameTextStyle: { color: '#a2bfda', fontSize: 12 }, axisLabel: { color: '#a2bfda', fontSize: 12 }, splitLine: { lineStyle: { color: 'rgba(117, 167, 210, .11)' } } },
     series: [
       { name: props.label || '历史值', type: 'line', data: all.value.map((p, i) => datum(p, i < historyLength ? value(p, 'value') : null)), smooth: .25, connectNulls: false, symbol: 'circle', symbolSize: 6, showSymbol: false, lineStyle: { color: '#00d4ff', width: 2.5, shadowColor: 'rgba(0, 212, 255, .36)', shadowBlur: 10 }, itemStyle: { color: '#00d4ff' }, areaStyle: { color: new graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 212, 255, .32)' }, { offset: 1, color: 'rgba(0, 212, 255, .015)' }]) } },
-      { name: '区间下界', type: 'line', data: all.value.map((p, i) => datum(p, i >= historyLength ? value(p, 'lower_bound') : null)), stack: 'band', symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 }, silent: true },
+      ...(props.forecast?.some(p => p.lower_bound != null && p.upper_bound != null) ? [
+      { name: '区间下界', type: 'line', data: all.value.map((p, i) => datum(p, i >= historyLength && p.lower_bound != null && p.upper_bound != null ? value(p, 'lower_bound') : null)), stack: 'band', symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 }, silent: true },
       { name: '预测区间', type: 'line', data: all.value.map((p, i) => datum(p, i >= historyLength && p.lower_bound != null && p.upper_bound != null ? (p.upper_bound - p.lower_bound) / divisor.value : null)), stack: 'band', symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: '#688cae', opacity: .16 }, silent: true },
+      ] : []),
       { name: '预测值', type: 'line', data: all.value.map((p, i) => datum(p, i >= historyLength ? value(p, 'value') : null)), smooth: .25, symbolSize: 5, lineStyle: { color: '#ffb84d', width: 2, type: 'dashed' }, itemStyle: { color: '#ffb84d' } },
     ],
   }, true)
